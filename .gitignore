@@ -1,0 +1,36 @@
+# Project specific exclusions
+PURPOSE.md
+purpose.md
+project.xcodeproj/
+
+# macOS / OS X
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might be created by Xcode
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+DerivedData/
+.swiftpm/
+*.xcworkspace
+build/
+
+# Python / Scripts environment if any
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+env/
