@@ -82,6 +82,7 @@ clean:
 	@rm -rf $(BUILD_DIR)
 	@rm -rf *.xcodeproj
 	@rm -rf DerivedData
+	@rm -rf ~/Library/Developer/Xcode/DerivedData/$(APP_NAME)-*
 	@echo "✓ Clean complete"
 
 # Print help
