@@ -89,7 +89,7 @@ enum FGConstants {
     // MARK: - UI
 
     /// Menu bar icon SF Symbol name.
-    static let menuBarIcon = "face.smiling"
+    static let menuBarIcon = "MenuBarIcon"
 
     /// App display name.
     static let appName = "FaceGate"
