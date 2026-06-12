@@ -1,0 +1,483 @@
+import AppKit
+import SwiftUI
+
+/// The SwiftUI view displayed inside the auth overlay panel.
+/// Shows the locked app's icon, name, and authentication options.
+/// When face unlock is enabled, shows live camera preview with face scanning animation.
+struct AuthOverlayView: View {
+    let appName: String
+    let appIcon: NSImage
+    let onAuthenticated: () -> Void
+    let onCancel: () -> Void
+
+    @StateObject private var authManager = AuthenticationManager.shared
+    @State private var passwordInput: String = ""
+    @State private var showPasswordField: Bool = false
+    @State private var showFallbacks: Bool = false
+    @State private var shakePassword: Bool = false
+    @State private var faceAuthStarted: Bool = false
+
+    var body: some View {
+        ZStack {
+            // Dark blurred background.
+            VisualEffectBackground(material: .fullScreenUI, blendingMode: .behindWindow)
+                .ignoresSafeArea()
+
+            // Semi-transparent dark overlay for extra dimming.
+            Color.black.opacity(0.5)
+                .ignoresSafeArea()
+
+            // Content.
+            VStack(spacing: 0) {
+                Spacer()
+
+                // Shield icon.
+                Image(systemName: "shield.lefthalf.filled")
+                    .font(.system(size: 40, weight: .light))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
+                                     Color(hue: 0.72, saturation: 0.6, brightness: 0.90)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .padding(.bottom, 12)
+
+                // App name.
+                Text("FaceGate")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.5))
+                    .padding(.bottom, 20)
+
+                // Face Unlock camera preview (if available and enabled).
+                if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField {
+                    faceUnlockView
+                        .padding(.bottom, 16)
+                } else {
+                    // App icon (shown when face unlock is not active).
+                    Image(nsImage: appIcon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 80, height: 80)
+                        .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 4)
+                        .padding(.bottom, 16)
+                }
+
+                // "App Name is Locked".
+                Text("\(appName) is Locked")
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 8)
+
+                // Status message.
+                if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField {
+                    Text(authManager.faceAuthManager.statusMessage.isEmpty
+                         ? "Authenticate to unlock this app"
+                         : authManager.faceAuthManager.statusMessage)
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.white.opacity(0.6))
+                        .padding(.bottom, 24)
+                        .animation(.easeInOut(duration: 0.2), value: authManager.faceAuthManager.statusMessage)
+                } else {
+                    Text("Authenticate to unlock this app")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.white.opacity(0.6))
+                        .padding(.bottom, 24)
+                }
+
+                // Auth state feedback.
+                authFeedbackView
+                    .padding(.bottom, 16)
+
+                // Auth methods.
+                if showPasswordField {
+                    passwordAuthView
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if showFallbacks || !authManager.isFaceUnlockAvailable {
+                    authButtonsView
+                        .transition(.opacity)
+                } else {
+                    // Face unlock active — show "use other method" link.
+                    Button(action: {
+                        withAnimation {
+                            showFallbacks = true
+                            authManager.stopFaceAuth()
+                        }
+                    }) {
+                        Text("— or authenticate with —")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 8)
+
+                    // Show fallback buttons below face unlock.
+                    HStack(spacing: 16) {
+                        if TouchIDAuth.shared.canUse {
+                            smallFallbackButton(icon: "touchid", label: "Touch ID") {
+                                authenticateWithTouchID()
+                            }
+                        }
+                        smallFallbackButton(icon: "key.fill", label: "Password") {
+                            withAnimation { showPasswordField = true }
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+
+                Spacer()
+
+                // Cancel button at bottom.
+                Button(action: onCancel) {
+                    Text("Cancel & Close App")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+                .buttonStyle(.plain)
+                .padding(.bottom, 40)
+            }
+            .frame(maxWidth: 360)
+            .animation(.easeInOut(duration: 0.25), value: showPasswordField)
+            .animation(.easeInOut(duration: 0.25), value: showFallbacks)
+            .animation(.easeInOut(duration: 0.2), value: authManager.authState)
+        }
+        .onAppear {
+            // Auto-start face unlock if available.
+            if authManager.isFaceUnlockAvailable && !faceAuthStarted {
+                faceAuthStarted = true
+                authManager.authenticateWithFace { success in
+                    if success {
+                        // Small delay for visual feedback before dismissing.
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            onAuthenticated()
+                            authManager.resetAttempts()
+                        }
+                    }
+                }
+            }
+        }
+        .onChangeCompat(of: authManager.authState) { newState in
+            if case .success = newState {
+                // Small delay for visual feedback before dismissing.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    onAuthenticated()
+                    authManager.resetAttempts()
+                }
+            }
+        }
+        .onChangeCompat(of: authManager.faceAuthManager.state) { newState in
+            if newState == .timeout && !showFallbacks {
+                // Face auth timed out — show fallback options.
+                withAnimation {
+                    showFallbacks = true
+                }
+            }
+        }
+    }
+
+    // MARK: - Face Unlock View
+
+    @ViewBuilder
+    private var faceUnlockView: some View {
+        ZStack {
+            // Camera preview.
+            CameraPreviewView(captureSession: authManager.faceAuthManager.cameraManager.captureSession)
+                .frame(width: 200, height: 200)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+
+            // Scanning animation overlay.
+            ScanningAnimation(
+                isScanning: authManager.faceAuthManager.state == .scanning,
+                isMatched: authManager.faceAuthManager.state == .matched
+            )
+        }
+        .frame(width: 200, height: 200)
+    }
+
+    // MARK: - Small Fallback Buttons
+
+    private func smallFallbackButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .frame(width: 80, height: 50)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.white.opacity(0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+            )
+            .foregroundColor(.white.opacity(0.7))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Subviews
+
+    @ViewBuilder
+    private var authFeedbackView: some View {
+        switch authManager.authState {
+        case .idle:
+            EmptyView()
+        case .authenticating(let method):
+            if method != .faceUnlock {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .colorScheme(.dark)
+                    Text("Authenticating with \(method.displayName)…")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            }
+        case .success:
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                Text("Authenticated!")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.green)
+            }
+        case .failed(let message):
+            HStack(spacing: 8) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.red.opacity(0.8))
+                Text(message)
+                    .font(.system(size: 12))
+                    .foregroundColor(.red.opacity(0.8))
+            }
+        case .lockedOut(let duration):
+            VStack(spacing: 4) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(.orange)
+                Text("Too many failed attempts")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.orange)
+                Text("Try again in \(Int(duration)) seconds")
+                    .font(.system(size: 11))
+                    .foregroundColor(.orange.opacity(0.7))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var authButtonsView: some View {
+        VStack(spacing: 12) {
+            // Face Unlock button (if available but user navigated to fallbacks).
+            if authManager.isFaceUnlockAvailable {
+                Button(action: {
+                    withAnimation {
+                        showFallbacks = false
+                        faceAuthStarted = true
+                        authManager.authenticateWithFace { success in
+                            if success {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    onAuthenticated()
+                                    authManager.resetAttempts()
+                                }
+                            }
+                        }
+                    }
+                }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "faceid")
+                            .font(.system(size: 18))
+                        Text("Try Face Unlock Again")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(hue: 0.58, saturation: 0.5, brightness: 0.8).opacity(0.3),
+                                        Color(hue: 0.65, saturation: 0.4, brightness: 0.7).opacity(0.3),
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                    )
+                    .foregroundColor(.white.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Touch ID button (if available).
+            if TouchIDAuth.shared.canUse {
+                Button(action: authenticateWithTouchID) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "touchid")
+                            .font(.system(size: 18))
+                        Text("Unlock with Touch ID")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.white.opacity(0.12))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+                    .foregroundColor(.white)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Password button.
+            Button(action: { withAnimation { showPasswordField = true } }) {
+                HStack(spacing: 10) {
+                    Image(systemName: "key.fill")
+                        .font(.system(size: 16))
+                    Text("Use Password")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+                )
+                .foregroundColor(.white.opacity(0.8))
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: 280)
+    }
+
+    @ViewBuilder
+    private var passwordAuthView: some View {
+        VStack(spacing: 16) {
+            // Password input field.
+            SecureField("Enter password", text: $passwordInput)
+                .textFieldStyle(.plain)
+                .font(.system(size: 14))
+                .foregroundColor(.white)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.white.opacity(0.1))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                )
+                .offset(x: shakePassword ? -8 : 0)
+                .animation(
+                    shakePassword
+                        ? Animation.default.repeatCount(4, autoreverses: true).speed(6)
+                        : .default,
+                    value: shakePassword
+                )
+                .onSubmit {
+                    submitPassword()
+                }
+
+            HStack(spacing: 12) {
+                // Back button.
+                Button(action: {
+                    withAnimation {
+                        showPasswordField = false
+                        passwordInput = ""
+                    }
+                }) {
+                    Text("Back")
+                        .font(.system(size: 13, weight: .medium))
+                        .frame(width: 80, height: 36)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.white.opacity(0.08))
+                        )
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+
+                // Unlock button.
+                Button(action: submitPassword) {
+                    Text("Unlock")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 36)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color(hue: 0.58, saturation: 0.6, brightness: 0.85),
+                                            Color(hue: 0.65, saturation: 0.5, brightness: 0.75),
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        )
+                        .foregroundColor(.white)
+                }
+                .buttonStyle(.plain)
+                .disabled(passwordInput.isEmpty)
+            }
+        }
+        .frame(maxWidth: 280)
+    }
+
+    // MARK: - Actions
+
+    private func authenticateWithTouchID() {
+        authManager.authenticateWithTouchID(appName: appName) { _ in }
+    }
+
+    private func submitPassword() {
+        guard !passwordInput.isEmpty else { return }
+
+        let success = authManager.authenticateWithPassword(passwordInput)
+        if !success {
+            // Shake animation on failure.
+            shakePassword = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                shakePassword = false
+            }
+            passwordInput = ""
+        }
+    }
+}
+
+// MARK: - Visual Effect (NSVisualEffectView wrapper)
+
+struct VisualEffectBackground: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+    }
+}
