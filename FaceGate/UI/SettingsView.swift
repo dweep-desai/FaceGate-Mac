@@ -37,7 +37,7 @@ struct SettingsView: View {
             Group {
                 switch selectedTab {
                 case .lockedApps:
-                    AppPickerView()
+                    LockedAppsSettingsView()
                 case .authentication:
                     AuthSettingsView()
                 case .behavior:
@@ -435,5 +435,422 @@ private struct AboutView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Locked Apps Settings View
+
+struct LockedAppsSettingsView: View {
+    @ObservedObject var lockedAppsManager = LockedAppsManager.shared
+    @State private var showingAddApps = false
+    @State private var installedApps: [InstalledAppsScanner.DiscoveredApp] = []
+    @State private var isLoading = false
+    @State private var searchText = ""
+
+    private var filteredLockedApps: [LockedApp] {
+        if searchText.isEmpty {
+            return lockedAppsManager.lockedApps
+        }
+        return lockedAppsManager.lockedApps.filter {
+            $0.displayName.localizedCaseInsensitiveContains(searchText) ||
+            $0.bundleIdentifier.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    private var filteredUnlockedApps: [InstalledAppsScanner.DiscoveredApp] {
+        let lockedBundleIDs = Set(lockedAppsManager.lockedApps.map { $0.bundleIdentifier })
+        let unlocked = installedApps.filter { !lockedBundleIDs.contains($0.bundleIdentifier) }
+        if searchText.isEmpty {
+            return unlocked
+        }
+        return unlocked.filter {
+            $0.displayName.localizedCaseInsensitiveContains(searchText) ||
+            $0.bundleIdentifier.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if showingAddApps {
+                addAppsHeader
+                Divider()
+                if isLoading {
+                    loadingView
+                } else if filteredUnlockedApps.isEmpty {
+                    emptyUnlockedView
+                } else {
+                    unlockedAppsList
+                }
+            } else {
+                lockedAppsHeader
+                Divider()
+                if lockedAppsManager.lockedApps.isEmpty {
+                    emptyLockedView
+                } else if filteredLockedApps.isEmpty {
+                    noSearchResultsView
+                } else {
+                    lockedAppsList
+                }
+            }
+        }
+        .onAppear {
+            loadAppsIfNeeded()
+        }
+    }
+
+    // MARK: - Loading State View
+    @ViewBuilder
+    private var loadingView: some View {
+        Spacer()
+        VStack(spacing: 12) {
+            ProgressView()
+                .controlSize(.regular)
+            Text("Scanning installed apps…")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+        }
+        Spacer()
+    }
+
+    // MARK: - Empty States
+    @ViewBuilder
+    private var emptyLockedView: some View {
+        Spacer()
+        VStack(spacing: 16) {
+            Image(systemName: "lock.open")
+                .font(.system(size: 36))
+                .foregroundColor(.secondary)
+            VStack(spacing: 4) {
+                Text("No Apps Locked")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("Protect your apps by adding them to the lock list.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: 260)
+            
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    searchText = ""
+                    showingAddApps = true
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                    Text("Add Apps")
+                }
+                .font(.system(size: 12, weight: .medium))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.blue)
+                )
+                .foregroundColor(.white)
+            }
+            .buttonStyle(.plain)
+        }
+        Spacer()
+    }
+
+    @ViewBuilder
+    private var emptyUnlockedView: some View {
+        Spacer()
+        VStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 36))
+                .foregroundColor(.green.opacity(0.8))
+            VStack(spacing: 4) {
+                Text("All Apps Locked")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("You've locked all discovered applications on this system.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: 260)
+        }
+        Spacer()
+    }
+
+    @ViewBuilder
+    private var noSearchResultsView: some View {
+        Spacer()
+        VStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 24))
+                .foregroundColor(.secondary)
+            Text("No results matching \"\(searchText)\"")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+        }
+        Spacer()
+    }
+
+    // MARK: - Headers
+    private var lockedAppsHeader: some View {
+        HStack(spacing: 12) {
+            Text("Locked Apps")
+                .font(.system(size: 15, weight: .bold))
+
+            Spacer()
+
+            // Search bar
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("Search…", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .frame(width: 160)
+
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    searchText = ""
+                    showingAddApps = true
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                    Text("Add Apps…")
+                }
+                .font(.system(size: 12, weight: .medium))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.blue)
+                )
+                .foregroundColor(.white)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private var addAppsHeader: some View {
+        HStack(spacing: 12) {
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    searchText = ""
+                    showingAddApps = false
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("Done")
+                }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.blue)
+            }
+            .buttonStyle(.plain)
+
+            Text("Add Apps to Lock")
+                .font(.system(size: 15, weight: .bold))
+
+            Spacer()
+
+            // Search bar
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("Search…", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .frame(width: 180)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    // MARK: - Lists
+    private var lockedAppsList: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                ForEach(filteredLockedApps, id: \.bundleIdentifier) { app in
+                    LockedRowView(app: app) {
+                        withAnimation(.spring(response: 0.18, dampingFraction: 0.8, blendDuration: 0)) {
+                            lockedAppsManager.unlockApp(app.bundleIdentifier)
+                        }
+                    }
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                        removal: .scale(scale: 0.7).combined(with: .opacity)
+                    ))
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private var unlockedAppsList: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                ForEach(filteredUnlockedApps, id: \.bundleIdentifier) { app in
+                    UnlockedRowView(app: app) {
+                        withAnimation(.spring(response: 0.18, dampingFraction: 0.8, blendDuration: 0)) {
+                            let lockedApp = InstalledAppsScanner.shared.toLockedApp(app, isLocked: true)
+                            lockedAppsManager.lockApp(lockedApp)
+                        }
+                    }
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                        removal: .scale(scale: 0.7).combined(with: .opacity)
+                    ))
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Private Helpers
+    private func loadAppsIfNeeded() {
+        guard installedApps.isEmpty else { return }
+        isLoading = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let apps = InstalledAppsScanner.shared.scanInstalledApps()
+            DispatchQueue.main.async {
+                installedApps = apps
+                isLoading = false
+            }
+        }
+    }
+}
+
+// MARK: - Individual Row Views
+
+private struct LockedRowView: View {
+    let app: LockedApp
+    let onToggle: () -> Void
+    @State private var isLocked = true
+    @State private var isHovered = false
+    @State private var isProcessing = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let icon = app.icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 32, height: 32)
+            } else {
+                Image(systemName: "app.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 32, height: 32)
+                    .foregroundColor(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(app.displayName)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                Text(app.bundleIdentifier)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: $isLocked)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+                .allowsHitTesting(!isProcessing)
+                .onChangeCompat(of: isLocked) { newValue in
+                    guard !isProcessing else { return }
+                    if !newValue {
+                        isProcessing = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            onToggle()
+                        }
+                    }
+                }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(isHovered ? Color(nsColor: .controlBackgroundColor) : Color.clear)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
+
+private struct UnlockedRowView: View {
+    let app: InstalledAppsScanner.DiscoveredApp
+    let onToggle: () -> Void
+    @State private var isLocked = false
+    @State private var isHovered = false
+    @State private var isProcessing = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(nsImage: app.icon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 32, height: 32)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(app.displayName)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                Text(app.bundleIdentifier)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: $isLocked)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+                .allowsHitTesting(!isProcessing)
+                .onChangeCompat(of: isLocked) { newValue in
+                    guard !isProcessing else { return }
+                    if newValue {
+                        isProcessing = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            onToggle()
+                        }
+                    }
+                }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(isHovered ? Color(nsColor: .controlBackgroundColor) : Color.clear)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }
