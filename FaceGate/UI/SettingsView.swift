@@ -716,9 +716,16 @@ struct LockedAppsSettingsView: View {
             VStack(spacing: 0) {
                 ForEach(filteredUnlockedApps, id: \.bundleIdentifier) { app in
                     UnlockedRowView(app: app) {
-                        withAnimation(.spring(response: 0.18, dampingFraction: 0.8, blendDuration: 0)) {
+                        let startTime = Date()
+                        DispatchQueue.global(qos: .userInitiated).async {
                             let lockedApp = InstalledAppsScanner.shared.toLockedApp(app, isLocked: true)
-                            lockedAppsManager.lockApp(lockedApp)
+                            let elapsed = Date().timeIntervalSince(startTime)
+                            let remainingDelay = max(0, 0.20 - elapsed)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + remainingDelay) {
+                                withAnimation(.spring(response: 0.18, dampingFraction: 0.8, blendDuration: 0)) {
+                                    lockedAppsManager.lockApp(lockedApp)
+                                }
+                            }
                         }
                     }
                     .transition(.asymmetric(
@@ -840,9 +847,7 @@ private struct UnlockedRowView: View {
                     guard !isProcessing else { return }
                     if newValue {
                         isProcessing = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            onToggle()
-                        }
+                        onToggle()
                     }
                 }
         }
