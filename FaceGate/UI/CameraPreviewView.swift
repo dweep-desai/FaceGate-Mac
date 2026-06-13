@@ -40,5 +40,9 @@ final class CameraPreviewNSView: NSView {
     override func layout() {
         super.layout()
         previewLayer.frame = bounds
+        if let connection = previewLayer.connection, connection.isVideoMirroringSupported {
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = true
+        }
     }
 }
