@@ -91,6 +91,9 @@ struct FaceEnrollmentView: View {
                 .padding(.bottom, 20)
         }
         .frame(width: 420, height: isInSettings ? 460 : 420)
+        .onAppear {
+            enrollmentManager.startEnrollment()
+        }
     }
 
     // MARK: - State Views
@@ -140,18 +143,14 @@ struct FaceEnrollmentView: View {
     private var actionButtons: some View {
         switch enrollmentManager.state {
         case .idle:
-            VStack(spacing: 10) {
-                primaryButton("Start Enrollment") {
-                    enrollmentManager.startEnrollment()
-                }
-                secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
-                    onComplete()
-                }
+            secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
+                onComplete()
             }
 
         case .capturing:
-            secondaryButton("Cancel") {
+            secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
                 enrollmentManager.cancelEnrollment()
+                onComplete()
             }
 
         case .processing:
