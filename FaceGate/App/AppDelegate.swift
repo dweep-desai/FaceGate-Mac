@@ -4,11 +4,9 @@ import SwiftUI
 /// AppDelegate for AppKit bridging — handles lifecycle events that SwiftUI can't.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
+    private var setupWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Set as accessory app (menu bar only, no Dock icon).
-        NSApp.setActivationPolicy(.accessory)
-
         // Pre-load the Core ML face embedding model to avoid cold-start delay.
         // The ANE compilation happens at load time (~200-500ms) — pay this cost now.
         FaceEmbedder.shared.loadModel()
@@ -19,9 +17,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AppLocker.shared.blockApp(bundleIdentifier: bundleId, runningApp: runningApp)
         }
 
-        // Start monitoring if setup is complete.
+        // Initialize as accessory to let SwiftUI's MenuBarExtra initialize first.
+        NSApp.setActivationPolicy(.accessory)
+
+        // Start monitoring if setup is complete, otherwise open setup after a delay.
         if UserDefaults.standard.bool(forKey: FGConstants.setupCompletedKey) {
             AppMonitor.shared.startMonitoring()
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.openSetupWindow()
+            }
         }
 
         // Listen for "open settings" notifications from MenuBarView.
@@ -29,6 +34,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self,
             selector: #selector(openSettingsWindow),
             name: .openSettings,
+            object: nil
+        )
+
+        // Listen for "open setup" notifications from MenuBarView.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(openSetupWindow),
+            name: .openSetup,
             object: nil
         )
     }
@@ -82,6 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         closeMenuBarWindow()
 
         if let existing = settingsWindow {
+            existing.orderFrontRegardless()
             existing.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
@@ -98,9 +112,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentView = NSHostingView(rootView: settingsView)
         window.center()
         window.isReleasedWhenClosed = false
+        
+        window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
         settingsWindow = window
+    }
+
+    @objc private func openSetupWindow() {
+        closeMenuBarWindow()
+
+        if let existing = setupWindow {
+            existing.orderFrontRegardless()
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let setupView = SetupView {
+            AppMonitor.shared.startMonitoring()
+            // Find and close the setup window
+            for window in NSApp.windows {
+                if window.title == "FaceGate Setup" {
+                    window.close()
+                }
+            }
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 520),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "FaceGate Setup"
+        window.contentView = NSHostingView(rootView: setupView)
+        window.center()
+        window.isReleasedWhenClosed = false
+        
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        setupWindow = window
     }
 }

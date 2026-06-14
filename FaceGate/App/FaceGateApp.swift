@@ -17,15 +17,5 @@ struct FaceGateApp: App {
             Image(FGConstants.menuBarIcon)
         }
         .menuBarExtraStyle(.window)
-
-        // Setup window — shown on first launch.
-        WindowGroup("FaceGate Setup", id: "setup") {
-            SetupView {
-                showSetup = false
-                AppMonitor.shared.startMonitoring()
-            }
-        }
-        .defaultSize(width: 520, height: 480)
-        .windowResizability(.contentSize)
     }
 }

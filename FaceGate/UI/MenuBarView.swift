@@ -12,8 +12,6 @@ struct MenuBarView: View {
     @State private var disableTimeRemaining: TimeInterval = 0
     @State private var disableTimer: Timer?
 
-    @Environment(\.openWindow) private var openWindow
-
     private var sortedLockedApps: [LockedApp] {
         lockedAppsManager.lockedApps.sorted {
             $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
@@ -130,7 +128,7 @@ struct MenuBarView: View {
             checkTemporaryDisable()
             // If setup was never finished, open the Setup Wizard immediately.
             if !UserDefaults.standard.bool(forKey: FGConstants.setupCompletedKey) {
-                openWindow(id: "setup")
+                NotificationCenter.default.post(name: .openSetup, object: nil)
             } else if !appMonitor.isMonitoring {
                 // Failsafe: start monitoring if it somehow got stopped
                 appMonitor.startMonitoring()
@@ -332,4 +330,5 @@ private struct MenuButton: View {
 
 extension Notification.Name {
     static let openSettings = Notification.Name("com.dweep.FaceGate.openSettings")
+    static let openSetup = Notification.Name("com.dweep.FaceGate.openSetup")
 }
