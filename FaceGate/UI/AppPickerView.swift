@@ -105,8 +105,17 @@ struct AppPickerView: View {
         if lockedBundleIDs.contains(app.bundleIdentifier) {
             lockedAppsManager.unlockApp(app.bundleIdentifier)
         } else {
-            let lockedApp = InstalledAppsScanner.shared.toLockedApp(app, isLocked: true)
-            lockedAppsManager.lockApp(lockedApp)
+            let startTime = Date()
+            DispatchQueue.global(qos: .userInitiated).async {
+                let lockedApp = InstalledAppsScanner.shared.toLockedApp(app, isLocked: true)
+                let elapsed = Date().timeIntervalSince(startTime)
+                let remainingDelay = max(0, 0.20 - elapsed)
+                DispatchQueue.main.asyncAfter(deadline: .now() + remainingDelay) {
+                    withAnimation(.spring(response: 0.18, dampingFraction: 0.8, blendDuration: 0)) {
+                        lockedAppsManager.lockApp(lockedApp)
+                    }
+                }
+            }
         }
     }
 }
@@ -119,6 +128,8 @@ private struct AppRow: View {
     let onToggle: () -> Void
 
     @State private var isHovered = false
+    @State private var isLockedState = false
+    @State private var isProcessing = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -139,19 +150,37 @@ private struct AppRow: View {
 
             Spacer()
 
-            Toggle("", isOn: Binding(
-                get: { isLocked },
-                set: { _ in onToggle() }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .labelsHidden()
+            Toggle("", isOn: $isLockedState)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+                .allowsHitTesting(!isProcessing)
+                .onChangeCompat(of: isLockedState) { newValue in
+                    guard !isProcessing else { return }
+                    if newValue != isLocked {
+                        isProcessing = true
+                        if !newValue { // Unlocking
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                onToggle()
+                            }
+                        } else { // Locking
+                            onToggle()
+                        }
+                    }
+                }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(isHovered ? Color(nsColor: .controlBackgroundColor) : Color.clear)
         .onHover { hovering in
             isHovered = hovering
+        }
+        .onAppear {
+            isLockedState = isLocked
+        }
+        .onChangeCompat(of: isLocked) { newValue in
+            isLockedState = newValue
+            isProcessing = false
         }
     }
 }

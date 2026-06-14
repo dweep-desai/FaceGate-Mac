@@ -67,18 +67,18 @@ struct SetupView: View {
         VStack(spacing: 20) {
             Spacer()
 
-            Image(FGConstants.menuBarIcon)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 56, height: 56)
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
-                                 Color(hue: 0.61, saturation: 0.75, brightness: 0.85)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            if let appIcon = NSApp.applicationIconImage {
+                Image(nsImage: appIcon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 64, height: 64)
+            } else {
+                Image(systemName: "app.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 64, height: 64)
+                    .foregroundColor(.secondary)
+            }
 
             VStack(spacing: 8) {
                 Text("Welcome to FaceGate")
@@ -255,13 +255,13 @@ struct SetupView: View {
             VStack(spacing: 4) {
                 let faceEnrolled = UserDefaults.standard.bool(forKey: FGConstants.faceEnrolledKey)
                 if faceEnrolled {
-                    Text("✅ Face Unlock enrolled and enabled")
+                    Text("Face Unlock enrolled and enabled")
                         .font(.system(size: 12))
-                        .foregroundColor(.green)
+                        .foregroundColor(.secondary)
                 } else {
-                    Text("⚠️ Face Unlock not enrolled — you can set it up later in Settings")
+                    Text("Face Unlock not enrolled (you can set it up later in Settings)")
                         .font(.system(size: 12))
-                        .foregroundColor(.orange)
+                        .foregroundColor(.secondary)
                 }
             }
 
@@ -305,21 +305,12 @@ struct SetupView: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 14, weight: .semibold))
-                .frame(width: 200, height: 40)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(hue: 0.58, saturation: 0.6, brightness: 0.85),
-                                    Color(hue: 0.61, saturation: 0.7, brightness: 0.80),
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                )
                 .foregroundColor(.white)
+                .frame(width: 200, height: 38)
+                .background(
+                    Capsule()
+                        .fill(Color.blue)
+                )
         }
         .buttonStyle(.plain)
     }

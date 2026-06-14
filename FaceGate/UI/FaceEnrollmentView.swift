@@ -180,21 +180,12 @@ struct FaceEnrollmentView: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 14, weight: .semibold))
-                .frame(width: 200, height: 40)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(hue: 0.58, saturation: 0.6, brightness: 0.85),
-                                    Color(hue: 0.61, saturation: 0.7, brightness: 0.80),
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                )
                 .foregroundColor(.white)
+                .frame(width: 200, height: 38)
+                .background(
+                    Capsule()
+                        .fill(Color.blue)
+                )
         }
         .buttonStyle(.plain)
     }
