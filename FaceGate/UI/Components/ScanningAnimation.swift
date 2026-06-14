@@ -30,54 +30,9 @@ struct ScanningAnimation: View {
     // MARK: - Scanning State
 
     private var scanningView: some View {
-        ZStack {
-            // Outer pulsing ring.
-            Circle()
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color(hue: 0.58, saturation: 0.7, brightness: 0.95).opacity(0.4),
-                            Color(hue: 0.58, saturation: 0.7, brightness: 0.95).opacity(0.1),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 2
-                )
-                .scaleEffect(ringScale)
-
-            // Rotating arc segment.
-            Circle()
-                .trim(from: 0, to: 0.25)
-                .stroke(
-                    Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
-                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                )
-                .rotationEffect(.degrees(rotation))
-
-            // Subtle glow behind the ring.
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color(hue: 0.58, saturation: 0.5, brightness: 0.9).opacity(glowOpacity),
-                            Color.clear,
-                        ],
-                        center: .center,
-                        startRadius: 40,
-                        endRadius: 100
-                    )
-                )
-        }
-        .onAppear {
-            withAnimation(.linear(duration: 2).repeatForever(autoreverses: false)) {
-                rotation = 360
-            }
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                ringScale = 1.05
-                glowOpacity = 0.15
-            }
-        }
+        Circle()
+            .stroke(Color.white.opacity(0.3), lineWidth: 2)
+            .padding(15)
     }
 
     // MARK: - Success State
