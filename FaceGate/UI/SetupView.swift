@@ -294,6 +294,11 @@ struct SetupView: View {
             setupButton("Start Protecting") {
                 UserDefaults.standard.set(true, forKey: FGConstants.setupCompletedKey)
                 onSetupComplete()
+                for window in NSApp.windows {
+                    if window.title == "FaceGate Setup" {
+                        window.close()
+                    }
+                }
             }
             .padding(.bottom, 30)
         }
