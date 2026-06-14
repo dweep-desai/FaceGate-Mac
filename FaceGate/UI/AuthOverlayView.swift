@@ -90,6 +90,7 @@ struct AuthOverlayView: View {
 
                 // Auth state feedback.
                 authFeedbackView
+                    .frame(height: isLockedOut ? 64 : 24)
                     .padding(.bottom, 16)
 
                 // Auth methods.
@@ -112,6 +113,7 @@ struct AuthOverlayView: View {
                             .foregroundColor(.white.opacity(0.4))
                     }
                     .buttonStyle(.plain)
+                    .focusable(false)
                     .padding(.top, 8)
 
                     // Show fallback buttons below face unlock.
@@ -137,6 +139,7 @@ struct AuthOverlayView: View {
                         .foregroundColor(.white.opacity(0.4))
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
                 .padding(.bottom, 40)
             }
             .frame(maxWidth: 360)
@@ -176,6 +179,13 @@ struct AuthOverlayView: View {
                 }
             }
         }
+    }
+
+    private var isLockedOut: Bool {
+        if case .lockedOut = authManager.authState {
+            return true
+        }
+        return false
     }
 
     // MARK: - Face Unlock View
@@ -219,6 +229,7 @@ struct AuthOverlayView: View {
             .foregroundColor(.white.opacity(0.7))
         }
         .buttonStyle(.plain)
+        .focusable(false)
     }
 
     // MARK: - Subviews
@@ -227,7 +238,7 @@ struct AuthOverlayView: View {
     private var authFeedbackView: some View {
         switch authManager.authState {
         case .idle:
-            EmptyView()
+            Color.clear
         case .authenticating(let method):
             if method != .faceUnlock {
                 HStack(spacing: 8) {
@@ -317,6 +328,7 @@ struct AuthOverlayView: View {
                     .foregroundColor(.white.opacity(0.8))
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
             }
 
             // Touch ID button (if available).
@@ -341,6 +353,7 @@ struct AuthOverlayView: View {
                     .foregroundColor(.white)
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
             }
 
             // Password button.
@@ -364,6 +377,7 @@ struct AuthOverlayView: View {
                 .foregroundColor(.white.opacity(0.8))
             }
             .buttonStyle(.plain)
+            .focusable(false)
         }
         .frame(maxWidth: 280)
     }
@@ -415,6 +429,7 @@ struct AuthOverlayView: View {
                         .foregroundColor(.white.opacity(0.7))
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
 
                 // Unlock button.
                 Button(action: submitPassword) {
@@ -438,6 +453,7 @@ struct AuthOverlayView: View {
                         .foregroundColor(.white)
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
                 .disabled(passwordInput.isEmpty)
             }
         }
