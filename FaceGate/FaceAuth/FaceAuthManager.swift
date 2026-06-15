@@ -28,6 +28,7 @@ final class FaceAuthManager: ObservableObject {
     /// Timeout tracking.
     private var authStartTime: Date?
     private let authTimeout: TimeInterval = 15  // seconds before showing fallback hint
+    private var timeoutWorkItem: DispatchWorkItem?
 
     enum LivenessChallenge: CaseIterable {
         case turnLeft
@@ -102,16 +103,22 @@ final class FaceAuthManager: ObservableObject {
 
         cameraManager.startCapture()
 
-        // Schedule timeout check.
-        DispatchQueue.main.asyncAfter(deadline: .now() + authTimeout) { [weak self] in
+        // Cancel any existing timeout before scheduling a new one.
+        timeoutWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
             guard let self = self, self.state == .scanning else { return }
             self.state = .timeout
             self.statusMessage = "Face not recognized"
         }
+        timeoutWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + authTimeout, execute: workItem)
     }
 
     /// Stop face authentication and release the camera.
     func stopAuthentication() {
+        timeoutWorkItem?.cancel()
+        timeoutWorkItem = nil
         cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
         state = .idle
@@ -199,6 +206,8 @@ final class FaceAuthManager: ObservableObject {
 
             if isChallengeSatisfied {
                 DispatchQueue.main.async {
+                    self.timeoutWorkItem?.cancel()
+                    self.timeoutWorkItem = nil
                     self.state = .matched
                     self.statusMessage = "Liveness verified!"
                     self.cameraManager.stopCapture()
