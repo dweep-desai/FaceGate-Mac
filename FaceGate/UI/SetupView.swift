@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 /// First-run onboarding wizard.
 /// Guides the user through: permissions → face enrollment → set password → select apps to lock.
@@ -293,6 +294,14 @@ struct SetupView: View {
 
             setupButton("Start Protecting") {
                 UserDefaults.standard.set(true, forKey: FGConstants.setupCompletedKey)
+                UserDefaults.standard.set(true, forKey: FGConstants.launchAtLoginKey)
+                if #available(macOS 13.0, *) {
+                    do {
+                        try SMAppService.mainApp.register()
+                    } catch {
+                        print("Failed to automatically register login item during setup: \(error)")
+                    }
+                }
                 onSetupComplete()
                 for window in NSApp.windows {
                     if window.title == "FaceGate Setup" {
