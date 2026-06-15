@@ -29,6 +29,22 @@ final class FaceAuthManager: ObservableObject {
     private var authStartTime: Date?
     private let authTimeout: TimeInterval = 15  // seconds before showing fallback hint
 
+    enum LivenessChallenge: CaseIterable {
+        case turnLeft
+        case turnRight
+        case tiltHead
+
+        var prompt: String {
+            switch self {
+            case .turnLeft: return "Liveness Check: Turn head left"
+            case .turnRight: return "Liveness Check: Turn head right"
+            case .tiltHead: return "Liveness Check: Tilt your head"
+            }
+        }
+    }
+
+    @Published var activeChallenge: LivenessChallenge? = nil
+
     /// Completion callback.
     private var onResult: ((Bool) -> Void)?
 
@@ -78,6 +94,7 @@ final class FaceAuthManager: ObservableObject {
         authStartTime = Date()
         state = .scanning
         statusMessage = "Looking for your face…"
+        activeChallenge = nil
 
         cameraManager.onFrameCaptured = { [weak self] pixelBuffer in
             self?.processAuthFrame(pixelBuffer)
@@ -148,14 +165,50 @@ final class FaceAuthManager: ObservableObject {
                 against: self.enrolledEmbeddings
             )
 
-            if result.isMatch {
+            guard result.isMatch else {
+                DispatchQueue.main.async {
+                    self.statusMessage = "Looking for your face…"
+                }
+                return
+            }
+
+            // Select a challenge if none has been chosen yet.
+            if self.activeChallenge == nil {
+                let challenge = LivenessChallenge.allCases.randomElement() ?? .turnLeft
+                DispatchQueue.main.async {
+                    self.activeChallenge = challenge
+                    self.statusMessage = challenge.prompt
+                }
+                return
+            }
+
+            guard let challenge = self.activeChallenge else { return }
+
+            let yaw = face.yaw.map { Float(truncating: $0) } ?? 0.0
+            let roll = face.roll.map { Float(truncating: $0) } ?? 0.0
+
+            var isChallengeSatisfied = false
+            switch challenge {
+            case .turnLeft:
+                isChallengeSatisfied = yaw < -0.15
+            case .turnRight:
+                isChallengeSatisfied = yaw > 0.15
+            case .tiltHead:
+                isChallengeSatisfied = abs(roll) > 0.15
+            }
+
+            if isChallengeSatisfied {
                 DispatchQueue.main.async {
                     self.state = .matched
-                    self.statusMessage = "Face recognized!"
+                    self.statusMessage = "Liveness verified!"
                     self.cameraManager.stopCapture()
                     self.cameraManager.onFrameCaptured = nil
                     self.onResult?(true)
                     self.onResult = nil
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.statusMessage = challenge.prompt
                 }
             }
         }

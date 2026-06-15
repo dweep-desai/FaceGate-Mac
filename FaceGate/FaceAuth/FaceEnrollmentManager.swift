@@ -30,6 +30,35 @@ final class FaceEnrollmentManager: ObservableObject {
     /// Camera manager for preview layer binding.
     var camera: CameraManager { cameraManager }
 
+    enum EnrollmentStep: CaseIterable {
+        case straight
+        case left
+        case right
+        case tilt
+
+        var prompt: String {
+            switch self {
+            case .straight: return "Look straight at the camera"
+            case .left: return "Turn your head slightly to the LEFT"
+            case .right: return "Turn your head slightly to the RIGHT"
+            case .tilt: return "Tilt your head slightly to the side"
+            }
+        }
+    }
+
+    var currentStep: EnrollmentStep {
+        let count = collectedEmbeddings.count
+        if count < 2 {
+            return .straight
+        } else if count < 4 {
+            return .left
+        } else if count < 6 {
+            return .right
+        } else {
+            return .tilt
+        }
+    }
+
     enum EnrollmentState: Equatable {
         case idle
         case capturing
@@ -109,6 +138,31 @@ final class FaceEnrollmentManager: ObservableObject {
                 return
             }
 
+            // Read yaw and roll angles for liveness and multi-angle verification.
+            let yaw = face.yaw.map { Float(truncating: $0) } ?? 0.0
+            let roll = face.roll.map { Float(truncating: $0) } ?? 0.0
+
+            let step = self.currentStep
+            var isPositionValid = false
+
+            switch step {
+            case .straight:
+                isPositionValid = abs(yaw) < 0.15 && abs(roll) < 0.12
+            case .left:
+                isPositionValid = yaw < -0.15
+            case .right:
+                isPositionValid = yaw > 0.15
+            case .tilt:
+                isPositionValid = abs(roll) > 0.15
+            }
+
+            if !isPositionValid {
+                DispatchQueue.main.async {
+                    self.statusMessage = step.prompt
+                }
+                return
+            }
+
             // Crop the face and generate an embedding.
             guard let croppedFace = self.faceDetector.cropFace(from: pixelBuffer, observation: face),
                   let embedding = self.faceEmbedder.generateEmbedding(from: croppedFace) else {
@@ -125,8 +179,8 @@ final class FaceEnrollmentManager: ObservableObject {
                 if self.capturedCount >= self.targetFrameCount {
                     self.finishEnrollment()
                 } else {
-                    let remaining = self.targetFrameCount - self.capturedCount
-                    self.statusMessage = "Great! \(remaining) more capture\(remaining == 1 ? "" : "s") needed"
+                    let nextStep = self.currentStep
+                    self.statusMessage = nextStep.prompt
                 }
             }
         }

@@ -230,6 +230,11 @@ struct AuthOverlayView: View {
                 isScanning: faceAuthManager.state == .scanning,
                 isMatched: faceAuthManager.state == .matched
             )
+
+            // Liveness direction indicator overlay.
+            if let challenge = faceAuthManager.activeChallenge {
+                directionIndicator(for: challenge)
+            }
         }
         .frame(width: 200, height: 200)
     }
@@ -521,6 +526,30 @@ struct AuthOverlayView: View {
                 shakePassword = false
             }
             passwordInput = ""
+        }
+    }
+
+    @ViewBuilder
+    private func directionIndicator(for challenge: FaceAuthManager.LivenessChallenge) -> some View {
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                Image(systemName: indicatorIcon(for: challenge))
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.blue)
+                    .padding(12)
+                    .background(Circle().fill(Color.black.opacity(0.6)))
+                    .padding(12)
+            }
+        }
+    }
+
+    private func indicatorIcon(for challenge: FaceAuthManager.LivenessChallenge) -> String {
+        switch challenge {
+        case .turnLeft: return "arrow.left.circle.fill"
+        case .turnRight: return "arrow.right.circle.fill"
+        case .tiltHead: return "arrow.turn.up.left.circle.fill"
         }
     }
 }

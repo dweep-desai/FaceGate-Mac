@@ -50,6 +50,10 @@ struct FaceEnrollmentView: View {
                         quality: enrollmentManager.currentQuality
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                    if enrollmentManager.state == .capturing {
+                        directionIndicator(for: enrollmentManager.currentStep)
+                    }
                 } else if enrollmentManager.state == .processing {
                     processingView
                 } else if enrollmentManager.state == .success {
@@ -196,5 +200,32 @@ struct FaceEnrollmentView: View {
                 .foregroundColor(.secondary)
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func directionIndicator(for step: FaceEnrollmentManager.EnrollmentStep) -> some View {
+        if step != .straight {
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Image(systemName: indicatorIcon(for: step))
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.blue)
+                        .padding(12)
+                        .background(Circle().fill(Color.black.opacity(0.6)))
+                        .padding(12)
+                }
+            }
+        }
+    }
+
+    private func indicatorIcon(for step: FaceEnrollmentManager.EnrollmentStep) -> String {
+        switch step {
+        case .straight: return ""
+        case .left: return "arrow.left.circle.fill"
+        case .right: return "arrow.right.circle.fill"
+        case .tilt: return "arrow.turn.up.left.circle.fill"
+        }
     }
 }

@@ -58,7 +58,13 @@ final class CameraManager: NSObject, ObservableObject {
         }
 
         captureSession.beginConfiguration()
-        captureSession.sessionPreset = .medium  // 480p is sufficient for face detection
+        if captureSession.canSetSessionPreset(.hd1920x1080) {
+            captureSession.sessionPreset = .hd1920x1080
+        } else if captureSession.canSetSessionPreset(.high) {
+            captureSession.sessionPreset = .high
+        } else {
+            captureSession.sessionPreset = .medium
+        }
 
         // Input: front-facing camera.
         guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) else {
