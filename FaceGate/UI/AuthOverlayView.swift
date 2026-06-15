@@ -13,6 +13,7 @@ struct AuthOverlayView: View {
     @StateObject private var authManager = AuthenticationManager.shared
     @ObservedObject private var faceAuthManager = AuthenticationManager.shared.faceAuthManager
     @State private var passwordInput: String = ""
+    @FocusState private var isPasswordFocused: Bool
     @State private var showPasswordField: Bool = false
     @State private var showFallbacks: Bool = false
     @State private var shakePassword: Bool = false
@@ -191,6 +192,13 @@ struct AuthOverlayView: View {
         }
         .onDisappear {
             authManager.stopFaceAuth()
+        }
+        .onChangeCompat(of: showPasswordField) { newValue in
+            if newValue {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    isPasswordFocused = true
+                }
+            }
         }
     }
 
@@ -401,6 +409,7 @@ struct AuthOverlayView: View {
         VStack(spacing: 16) {
             // Password input field.
             SecureField("Enter password", text: $passwordInput)
+                .focused($isPasswordFocused)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))
                 .foregroundColor(.white)
@@ -483,6 +492,9 @@ struct AuthOverlayView: View {
         authManager.stopFaceAuth()
         withAnimation {
             showPasswordField = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            isPasswordFocused = true
         }
     }
 
