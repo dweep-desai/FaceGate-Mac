@@ -16,15 +16,24 @@ final class AppMonitor: ObservableObject {
 
     private var launchObserver: NSObjectProtocol?
     private var activateObserver: NSObjectProtocol?
+    private var terminateObserver: NSObjectProtocol?
 
     private let lockedAppsManager = LockedAppsManager.shared
     private let sessionManager = SessionManager.shared
 
+    /// Cooldown to prevent re-lock loop right after unlock (used for "lock immediately" mode).
+    private var recentlyUnlocked: [String: Date] = [:]
+
     private init() {}
+
+    /// Record that an app was just unlocked (starts a 1-second cooldown against re-lock).
+    func recordUnlock(for bundleIdentifier: String) {
+        recentlyUnlocked[bundleIdentifier] = Date()
+    }
 
     // MARK: - Public API
 
-    /// Start monitoring app launches and activations.
+    /// Start monitoring app launches, activations, and terminations.
     func startMonitoring() {
         guard !isMonitoring else { return }
 
@@ -48,6 +57,15 @@ final class AppMonitor: ObservableObject {
             self?.handleAppEvent(notification)
         }
 
+        // Observe app terminations to enforce lock-on-quit.
+        terminateObserver = center.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleTerminateEvent(notification)
+        }
+
         isMonitoring = true
     }
 
@@ -65,6 +83,11 @@ final class AppMonitor: ObservableObject {
         if let observer = activateObserver {
             center.removeObserver(observer)
             activateObserver = nil
+        }
+
+        if let observer = terminateObserver {
+            center.removeObserver(observer)
+            terminateObserver = nil
         }
 
         isMonitoring = false
@@ -87,8 +110,32 @@ final class AppMonitor: ObservableObject {
         // Check if there's an active unlock session.
         guard !sessionManager.hasActiveSession(for: bundleId) else { return }
 
+        // Cooldown: don't re-lock within 1 second of being unlocked.
+        // This prevents a re-lock loop when "lock immediately" (no session) is set.
+        if let lastUnlock = recentlyUnlocked[bundleId],
+           Date().timeIntervalSince(lastUnlock) < 1 {
+            return
+        }
+
         // Locked app detected — notify the AppLocker.
         onLockedAppDetected?(bundleId, app)
+    }
+
+    /// Handle app termination — revoke session if lock-on-quit is enabled.
+    private func handleTerminateEvent(_ notification: Notification) {
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+              let bundleId = app.bundleIdentifier else {
+            return
+        }
+
+        guard lockedAppsManager.isLocked(bundleId) else { return }
+
+        let globalLockOnQuit = UserDefaults.standard.bool(forKey: FGConstants.lockOnQuitGlobalKey)
+        let appLockOnQuit = lockedAppsManager.lockedApps.first { $0.bundleIdentifier == bundleId }?.lockOnQuit ?? false
+
+        if globalLockOnQuit || appLockOnQuit {
+            sessionManager.revokeSession(for: bundleId)
+        }
     }
 
     /// Check if the user has temporarily disabled protection.

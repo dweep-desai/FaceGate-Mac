@@ -18,15 +18,33 @@ struct LockedApp: Codable, Identifiable, Hashable {
     /// Custom session timeout in seconds for this individual app.
     var customSessionTimeout: TimeInterval?
 
+    /// Whether this app should lock immediately when quit.
+    var lockOnQuit: Bool
+
     var id: String { bundleIdentifier }
 
     /// Creates a LockedApp from an NSRunningApplication or file path.
-    init(bundleIdentifier: String, displayName: String, iconData: Data? = nil, isLocked: Bool = true, customSessionTimeout: TimeInterval? = nil) {
+    init(bundleIdentifier: String, displayName: String, iconData: Data? = nil, isLocked: Bool = true, customSessionTimeout: TimeInterval? = nil, lockOnQuit: Bool = false) {
         self.bundleIdentifier = bundleIdentifier
         self.displayName = displayName
         self.iconData = iconData
         self.isLocked = isLocked
         self.customSessionTimeout = customSessionTimeout
+        self.lockOnQuit = lockOnQuit
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case bundleIdentifier, displayName, iconData, isLocked, customSessionTimeout, lockOnQuit
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        bundleIdentifier = try container.decode(String.self, forKey: .bundleIdentifier)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        iconData = try container.decodeIfPresent(Data.self, forKey: .iconData)
+        isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? true
+        customSessionTimeout = try container.decodeIfPresent(TimeInterval.self, forKey: .customSessionTimeout)
+        lockOnQuit = try container.decodeIfPresent(Bool.self, forKey: .lockOnQuit) ?? false
     }
 
     /// Convenience: get the NSImage icon from stored data.

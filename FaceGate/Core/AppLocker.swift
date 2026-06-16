@@ -16,6 +16,7 @@ final class AppLocker: ObservableObject {
     private var overlayPanels: [AuthOverlayPanel] = []
 
     private let sessionManager = SessionManager.shared
+    private let appMonitor = AppMonitor.shared
 
     private init() {}
 
@@ -43,20 +44,25 @@ final class AppLocker: ObservableObject {
     func unlockCurrentApp() {
         guard let bundleId = currentlyBlockedApp else { return }
 
-        // Create an unlock session.
+        // Save references before clearing state.
+        let app = blockedRunningApp
+
+        // Clear state BEFORE activate to prevent re-block during activation notification.
+        currentlyBlockedApp = nil
+        blockedRunningApp = nil
+
+        // Create an unlock session (no-op for "lock immediately" — duration is 0).
         sessionManager.createSession(for: bundleId)
+        appMonitor.recordUnlock(for: bundleId)
 
         // Dismiss overlays.
         dismissOverlays()
 
         // Unhide and activate the app.
-        if let app = blockedRunningApp {
+        if let app = app {
             app.unhide()
             app.activate(options: [.activateIgnoringOtherApps])
         }
-
-        currentlyBlockedApp = nil
-        blockedRunningApp = nil
     }
 
     /// Called when authentication fails and user chooses to cancel.

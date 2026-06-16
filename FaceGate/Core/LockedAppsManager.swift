@@ -30,6 +30,14 @@ final class LockedAppsManager: ObservableObject {
         }
     }
 
+    /// Update whether an app should lock on quit.
+    func updateLockOnQuit(for bundleIdentifier: String, lockOnQuit: Bool) {
+        if let index = lockedApps.firstIndex(where: { $0.bundleIdentifier == bundleIdentifier }) {
+            lockedApps[index].lockOnQuit = lockOnQuit
+            saveLockedApps()
+        }
+    }
+
     /// Add an app to the locked list.
     func lockApp(_ app: LockedApp) {
         if let index = lockedApps.firstIndex(where: { $0.bundleIdentifier == app.bundleIdentifier }) {

@@ -98,6 +98,9 @@ enum FGConstants {
     /// Key: user override timestamps for schedule (encoded [String: Bool]).
     static let userOverrideTimestampsKey = "userOverrideTimestamps"
 
+    /// Key: whether apps should lock on quit globally.
+    static let lockOnQuitGlobalKey = "lockOnQuitGlobal"
+
     // MARK: - Defaults
 
     /// Default face unlock similarity threshold (balanced).

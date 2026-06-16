@@ -363,6 +363,8 @@ private struct BehaviorSettingsView: View {
 
     @ObservedObject private var scheduleManager = AppScheduleManager.shared
 
+    @AppStorage(FGConstants.lockOnQuitGlobalKey) private var lockOnQuitGlobal = false
+
     private var shortcutModifierSymbol: String {
         emergencyKillModifier == "Command" ? "⌘" : "⇧"
     }
@@ -383,16 +385,32 @@ private struct BehaviorSettingsView: View {
                     HStack {
                         Text("Session Timeout")
                         Spacer()
-                        Text("\(Int(sessionTimeoutMinutes)) min")
-                            .foregroundColor(.secondary)
+                        if sessionTimeoutMinutes == 0 {
+                            Text("Lock Immediately")
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("\(Int(sessionTimeoutMinutes)) min")
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    Slider(value: $sessionTimeoutMinutes, in: 1...30, step: 1)
+                    Slider(value: $sessionTimeoutMinutes, in: 0...30, step: 1)
                         .onChangeCompat(of: sessionTimeoutMinutes) { newValue in
                             SessionManager.shared.setSessionTimeout(newValue * 60)
                         }
-                    Text("After unlocking an app, it stays unlocked for this duration before re-locking.")
+                    Text("After unlocking an app, it stays unlocked for this duration before re-locking. Set to 0 to lock immediately after use.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
+
+                    Toggle(isOn: $lockOnQuitGlobal) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Lock apps on quit")
+                            Text("Apps will lock themselves whenever they quit, even if quit within the unlock timer window.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .toggleStyle(.checkbox)
                 }
             } header: {
                 Text("Locking")
@@ -1167,6 +1185,7 @@ private struct LockedAppDetailView: View {
     
     @State private var hasCustomTimer = false
     @State private var customTimeoutMinutes: Double = 5
+    @State private var lockOnQuit = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -1239,26 +1258,54 @@ private struct LockedAppDetailView: View {
                                 Spacer()
                                 
                                 if hasCustomTimer {
-                                    Text("\(Int(customTimeoutMinutes)) min")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(.blue)
+                                    if customTimeoutMinutes == 0 {
+                                        Text("Lock Immediately")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                    } else {
+                                        Text("\(Int(customTimeoutMinutes)) min")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                    }
                                 } else {
-                                    let globalTimeout = Int(SessionManager.shared.sessionTimeout / 60)
-                                    Text("Using Global Timer (\(globalTimeout) min)")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
+                                    let globalTimeout = SessionManager.shared.sessionTimeout / 60
+                                    if globalTimeout == 0 {
+                                        Text("Using Global Timer (Lock Immediately)")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        Text("Using Global Timer (\(Int(globalTimeout)) min)")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
                             }
                             
                             HStack(spacing: 12) {
-                                Slider(value: $customTimeoutMinutes, in: 1...30, step: 1)
+                                Slider(value: $customTimeoutMinutes, in: 0...30, step: 1)
                                     .disabled(!hasCustomTimer)
                                 
-                                Text("1-30m")
+                                Text("0-30m")
                                     .font(.system(size: 10))
                                     .foregroundColor(.secondary)
                             }
                             .opacity(hasCustomTimer ? 1.0 : 0.5)
+
+                            Divider()
+
+                            Toggle(isOn: $lockOnQuit) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Lock this app on quit")
+                                    Text("The app will lock itself whenever it quits, even if quit within the unlock timer window.")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .toggleStyle(.checkbox)
+                            .onChangeCompat(of: lockOnQuit) { newValue in
+                                lockedAppsManager.updateLockOnQuit(for: app.bundleIdentifier, lockOnQuit: newValue)
+                            }
                         }
                         .padding(.vertical, 8)
                     }
@@ -1281,6 +1328,7 @@ private struct LockedAppDetailView: View {
                     let lastSelection = UserDefaults.standard.double(forKey: "lastCustomTimeout_\(app.bundleIdentifier)")
                     customTimeoutMinutes = lastSelection > 0 ? lastSelection : 5
                 }
+                lockOnQuit = activeApp.lockOnQuit
             }
         }
         .onChangeCompat(of: hasCustomTimer) { newValue in
