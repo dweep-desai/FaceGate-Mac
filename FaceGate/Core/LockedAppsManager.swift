@@ -40,12 +40,14 @@ final class LockedAppsManager: ObservableObject {
             lockedApps.append(newApp)
         }
         saveLockedApps()
+        AppScheduleManager.shared.recordUserOverride(for: app.bundleIdentifier, wantsLocked: true)
     }
 
     /// Remove an app from the locked list (or mark it unlocked).
     func unlockApp(_ bundleIdentifier: String) {
         lockedApps.removeAll { $0.bundleIdentifier == bundleIdentifier }
         saveLockedApps()
+        AppScheduleManager.shared.clearOverride(for: bundleIdentifier)
     }
 
     /// Toggle an app's lock state.
@@ -54,6 +56,9 @@ final class LockedAppsManager: ObservableObject {
             lockedApps[index].isLocked.toggle()
             if !lockedApps[index].isLocked {
                 lockedApps.remove(at: index)
+                AppScheduleManager.shared.clearOverride(for: bundleIdentifier)
+            } else {
+                AppScheduleManager.shared.recordUserOverride(for: bundleIdentifier, wantsLocked: true)
             }
             saveLockedApps()
         }

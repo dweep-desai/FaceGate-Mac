@@ -15,7 +15,7 @@ struct AnimatedDirectionIndicator: View {
     @State private var rotation: Double = -90
     
     var body: some View {
-        if direction == .tilt {
+        if direction == .tilt {``
             CurvedArrowShape()
                 .fill(Color.blue)
                 .frame(width: 24, height: 24)

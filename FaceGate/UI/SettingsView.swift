@@ -341,6 +341,28 @@ private struct BehaviorSettingsView: View {
     @State private var startTime = Date()
     @State private var endTime = Date()
 
+    // Lock all apps schedule
+    @AppStorage(FGConstants.lockAllScheduleEnabledKey) private var lockScheduleEnabled = false
+    @AppStorage(FGConstants.lockAllStartHourKey) private var lockStartHour = 22
+    @AppStorage(FGConstants.lockAllStartMinuteKey) private var lockStartMinute = 0
+    @AppStorage(FGConstants.lockAllEndHourKey) private var lockEndHour = 7
+    @AppStorage(FGConstants.lockAllEndMinuteKey) private var lockEndMinute = 0
+
+    @State private var lockStartTime = Date()
+    @State private var lockEndTime = Date()
+
+    // Unlock all apps schedule
+    @AppStorage(FGConstants.unlockAllScheduleEnabledKey) private var unlockScheduleEnabled = false
+    @AppStorage(FGConstants.unlockAllStartHourKey) private var unlockStartHour = 7
+    @AppStorage(FGConstants.unlockAllStartMinuteKey) private var unlockStartMinute = 0
+    @AppStorage(FGConstants.unlockAllEndHourKey) private var unlockEndHour = 22
+    @AppStorage(FGConstants.unlockAllEndMinuteKey) private var unlockEndMinute = 0
+
+    @State private var unlockStartTime = Date()
+    @State private var unlockEndTime = Date()
+
+    @ObservedObject private var scheduleManager = AppScheduleManager.shared
+
     private var shortcutModifierSymbol: String {
         emergencyKillModifier == "Command" ? "⌘" : "⇧"
     }
@@ -374,6 +396,98 @@ private struct BehaviorSettingsView: View {
                 }
             } header: {
                 Text("Locking")
+            }
+
+            Section {
+                HStack(spacing: 4) {
+                    Toggle(isOn: $lockScheduleEnabled) { EmptyView() }
+                        .toggleStyle(.checkbox)
+                        .onChangeCompat(of: lockScheduleEnabled) { newValue in
+                            scheduleManager.lockScheduleEnabled = newValue
+                        }
+
+                    HStack(spacing: 4) {
+                        Text("Lock all apps between")
+
+                        DatePicker("", selection: $lockStartTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                            .labelsHidden()
+                            .onChangeCompat(of: lockStartTime) { newValue in
+                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                                lockStartHour = comps.hour ?? 22
+                                lockStartMinute = comps.minute ?? 0
+                                scheduleManager.lockStartHour = lockStartHour
+                                scheduleManager.lockStartMinute = lockStartMinute
+                            }
+
+                        Text("and")
+
+                        DatePicker("", selection: $lockEndTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                            .labelsHidden()
+                            .onChangeCompat(of: lockEndTime) { newValue in
+                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                                lockEndHour = comps.hour ?? 7
+                                lockEndMinute = comps.minute ?? 0
+                                scheduleManager.lockEndHour = lockEndHour
+                                scheduleManager.lockEndMinute = lockEndMinute
+                            }
+                    }
+                    .disabled(!lockScheduleEnabled)
+                    .opacity(lockScheduleEnabled ? 1 : 0.5)
+                }
+
+                if lockScheduleEnabled {
+                    Text("All locked apps will be automatically locked during these hours. Manually unlocked apps are not affected.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Section {
+                HStack(spacing: 4) {
+                    Toggle(isOn: $unlockScheduleEnabled) { EmptyView() }
+                        .toggleStyle(.checkbox)
+                        .onChangeCompat(of: unlockScheduleEnabled) { newValue in
+                            scheduleManager.unlockScheduleEnabled = newValue
+                        }
+
+                    HStack(spacing: 4) {
+                        Text("Unlock all apps between")
+
+                        DatePicker("", selection: $unlockStartTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                            .labelsHidden()
+                            .onChangeCompat(of: unlockStartTime) { newValue in
+                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                                unlockStartHour = comps.hour ?? 7
+                                unlockStartMinute = comps.minute ?? 0
+                                scheduleManager.unlockStartHour = unlockStartHour
+                                scheduleManager.unlockStartMinute = unlockStartMinute
+                            }
+
+                        Text("and")
+
+                        DatePicker("", selection: $unlockEndTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                            .labelsHidden()
+                            .onChangeCompat(of: unlockEndTime) { newValue in
+                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                                unlockEndHour = comps.hour ?? 22
+                                unlockEndMinute = comps.minute ?? 0
+                                scheduleManager.unlockEndHour = unlockEndHour
+                                scheduleManager.unlockEndMinute = unlockEndMinute
+                            }
+                    }
+                    .disabled(!unlockScheduleEnabled)
+                    .opacity(unlockScheduleEnabled ? 1 : 0.5)
+                }
+
+                if unlockScheduleEnabled {
+                    Text("All locked apps will be automatically unlocked during these hours. Manually locked apps are not affected.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
             }
 
             Section {
@@ -466,23 +580,53 @@ private struct BehaviorSettingsView: View {
         .scrollContentBackground(.hidden)
         .onAppear {
             sessionTimeoutMinutes = SessionManager.shared.sessionTimeout / 60
-            
-            // Load schedule dates
+
             let calendar = Calendar.current
             let now = Date()
-            
+
+            // Load face-unlock schedule dates
             var startComponents = calendar.dateComponents([.year, .month, .day], from: now)
             startComponents.hour = startHour
             startComponents.minute = startMinute
             if let startDate = calendar.date(from: startComponents) {
                 startTime = startDate
             }
-            
+
             var endComponents = calendar.dateComponents([.year, .month, .day], from: now)
             endComponents.hour = endHour
             endComponents.minute = endMinute
             if let endDate = calendar.date(from: endComponents) {
                 endTime = endDate
+            }
+
+            // Load lock-all schedule dates
+            var lockStartComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            lockStartComponents.hour = lockStartHour
+            lockStartComponents.minute = lockStartMinute
+            if let startDate = calendar.date(from: lockStartComponents) {
+                lockStartTime = startDate
+            }
+
+            var lockEndComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            lockEndComponents.hour = lockEndHour
+            lockEndComponents.minute = lockEndMinute
+            if let endDate = calendar.date(from: lockEndComponents) {
+                lockEndTime = endDate
+            }
+
+            // Load unlock-all schedule dates
+            var unlockStartComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            unlockStartComponents.hour = unlockStartHour
+            unlockStartComponents.minute = unlockStartMinute
+            if let startDate = calendar.date(from: unlockStartComponents) {
+                unlockStartTime = startDate
+            }
+
+            var unlockEndComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            unlockEndComponents.hour = unlockEndHour
+            unlockEndComponents.minute = unlockEndMinute
+            if let endDate = calendar.date(from: unlockEndComponents) {
+                unlockEndTime = endDate
             }
         }
     }
