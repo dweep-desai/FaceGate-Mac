@@ -21,7 +21,7 @@ final class GlobalHotkeyManager {
         // Setup handler callback once.
         let handler: EventHandlerUPP = { (nextHandler, event, userData) -> OSStatus in
             DispatchQueue.main.async {
-                if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+                if let appDelegate = AppDelegate.shared {
                     appDelegate.isAuthorizedToQuit = true
                 }
                 NSApplication.shared.terminate(nil)

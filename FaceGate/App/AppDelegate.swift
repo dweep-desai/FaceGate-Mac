@@ -3,6 +3,13 @@ import SwiftUI
 
 /// AppDelegate for AppKit bridging — handles lifecycle events that SwiftUI can't.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    static private(set) var shared: AppDelegate?
+
+    override init() {
+        super.init()
+        AppDelegate.shared = self
+    }
+
     private var settingsWindow: NSWindow?
     private var setupWindow: NSWindow?
 

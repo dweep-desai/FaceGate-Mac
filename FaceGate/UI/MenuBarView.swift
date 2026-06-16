@@ -227,7 +227,7 @@ struct MenuBarView: View {
     }
 
     private func quitApplication() {
-        let appDelegate = NSApplication.shared.delegate as? AppDelegate
+        let appDelegate = AppDelegate.shared
         let isSettingsOpen = appDelegate?.isSettingsWindowVisible ?? false
         if isSettingsOpen {
             NSApplication.shared.terminate(nil)
