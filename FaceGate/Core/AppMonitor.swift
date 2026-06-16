@@ -20,7 +20,15 @@ final class AppMonitor: ObservableObject {
     private let lockedAppsManager = LockedAppsManager.shared
     private let sessionManager = SessionManager.shared
 
+    /// Cooldown to prevent re-lock loop right after unlock (used for "lock immediately" mode).
+    private var recentlyUnlocked: [String: Date] = [:]
+
     private init() {}
+
+    /// Record that an app was just unlocked (starts a 1-second cooldown against re-lock).
+    func recordUnlock(for bundleIdentifier: String) {
+        recentlyUnlocked[bundleIdentifier] = Date()
+    }
 
     // MARK: - Public API
 
@@ -86,6 +94,13 @@ final class AppMonitor: ObservableObject {
 
         // Check if there's an active unlock session.
         guard !sessionManager.hasActiveSession(for: bundleId) else { return }
+
+        // Cooldown: don't re-lock within 1 second of being unlocked.
+        // This prevents a re-lock loop when "lock immediately" (no session) is set.
+        if let lastUnlock = recentlyUnlocked[bundleId],
+           Date().timeIntervalSince(lastUnlock) < 1 {
+            return
+        }
 
         // Locked app detected — notify the AppLocker.
         onLockedAppDetected?(bundleId, app)

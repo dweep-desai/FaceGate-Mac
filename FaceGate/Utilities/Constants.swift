@@ -63,6 +63,41 @@ enum FGConstants {
     /// Key: end minute for disabling face unlock.
     static let faceUnlockDisabledEndMinuteKey = "faceUnlockDisabledEndMinute"
 
+    // MARK: - App Schedule
+
+    /// Key: whether the lock-all-apps schedule is enabled.
+    static let lockAllScheduleEnabledKey = "lockAllScheduleEnabled"
+
+    /// Key: start hour for locking all apps.
+    static let lockAllStartHourKey = "lockAllStartHour"
+
+    /// Key: start minute for locking all apps.
+    static let lockAllStartMinuteKey = "lockAllStartMinute"
+
+    /// Key: end hour for locking all apps.
+    static let lockAllEndHourKey = "lockAllEndHour"
+
+    /// Key: end minute for locking all apps.
+    static let lockAllEndMinuteKey = "lockAllEndMinute"
+
+    /// Key: whether the unlock-all-apps schedule is enabled.
+    static let unlockAllScheduleEnabledKey = "unlockAllScheduleEnabled"
+
+    /// Key: start hour for unlocking all apps.
+    static let unlockAllStartHourKey = "unlockAllStartHour"
+
+    /// Key: start minute for unlocking all apps.
+    static let unlockAllStartMinuteKey = "unlockAllStartMinute"
+
+    /// Key: end hour for unlocking all apps.
+    static let unlockAllEndHourKey = "unlockAllEndHour"
+
+    /// Key: end minute for unlocking all apps.
+    static let unlockAllEndMinuteKey = "unlockAllEndMinute"
+
+    /// Key: user override timestamps for schedule (encoded [String: Bool]).
+    static let userOverrideTimestampsKey = "userOverrideTimestamps"
+
     // MARK: - Defaults
 
     /// Default face unlock similarity threshold (balanced).

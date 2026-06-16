@@ -18,6 +18,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The ANE compilation happens at load time (~200-500ms) — pay this cost now.
         FaceEmbedder.shared.loadModel()
 
+        // Start the schedule manager so it begins evaluating lock/unlock time windows.
+        _ = AppScheduleManager.shared
+
         // Wire up AppMonitor ↔ AppLocker.
         AppMonitor.shared.onLockedAppDetected = { [weak self] bundleId, runningApp in
             _ = self  // silence warning

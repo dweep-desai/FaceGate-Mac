@@ -341,6 +341,28 @@ private struct BehaviorSettingsView: View {
     @State private var startTime = Date()
     @State private var endTime = Date()
 
+    // Lock all apps schedule
+    @AppStorage(FGConstants.lockAllScheduleEnabledKey) private var lockScheduleEnabled = false
+    @AppStorage(FGConstants.lockAllStartHourKey) private var lockStartHour = 22
+    @AppStorage(FGConstants.lockAllStartMinuteKey) private var lockStartMinute = 0
+    @AppStorage(FGConstants.lockAllEndHourKey) private var lockEndHour = 7
+    @AppStorage(FGConstants.lockAllEndMinuteKey) private var lockEndMinute = 0
+
+    @State private var lockStartTime = Date()
+    @State private var lockEndTime = Date()
+
+    // Unlock all apps schedule
+    @AppStorage(FGConstants.unlockAllScheduleEnabledKey) private var unlockScheduleEnabled = false
+    @AppStorage(FGConstants.unlockAllStartHourKey) private var unlockStartHour = 7
+    @AppStorage(FGConstants.unlockAllStartMinuteKey) private var unlockStartMinute = 0
+    @AppStorage(FGConstants.unlockAllEndHourKey) private var unlockEndHour = 22
+    @AppStorage(FGConstants.unlockAllEndMinuteKey) private var unlockEndMinute = 0
+
+    @State private var unlockStartTime = Date()
+    @State private var unlockEndTime = Date()
+
+    @ObservedObject private var scheduleManager = AppScheduleManager.shared
+
     private var shortcutModifierSymbol: String {
         emergencyKillModifier == "Command" ? "⌘" : "⇧"
     }
@@ -361,19 +383,116 @@ private struct BehaviorSettingsView: View {
                     HStack {
                         Text("Session Timeout")
                         Spacer()
-                        Text("\(Int(sessionTimeoutMinutes)) min")
-                            .foregroundColor(.secondary)
+                        if sessionTimeoutMinutes == 0 {
+                            Text("Lock Immediately")
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("\(Int(sessionTimeoutMinutes)) min")
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    Slider(value: $sessionTimeoutMinutes, in: 1...30, step: 1)
+                    Slider(value: $sessionTimeoutMinutes, in: 0...30, step: 1)
                         .onChangeCompat(of: sessionTimeoutMinutes) { newValue in
                             SessionManager.shared.setSessionTimeout(newValue * 60)
                         }
-                    Text("After unlocking an app, it stays unlocked for this duration before re-locking.")
+                    Text("After unlocking an app, it stays unlocked for this duration before re-locking. Set to 0 to lock immediately after use.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
             } header: {
                 Text("Locking")
+            }
+
+            Section {
+                HStack(spacing: 4) {
+                    Toggle(isOn: $lockScheduleEnabled) { EmptyView() }
+                        .toggleStyle(.checkbox)
+                        .onChangeCompat(of: lockScheduleEnabled) { newValue in
+                            scheduleManager.lockScheduleEnabled = newValue
+                        }
+
+                    HStack(spacing: 4) {
+                        Text("Lock all apps between")
+
+                        DatePicker("", selection: $lockStartTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                            .labelsHidden()
+                            .onChangeCompat(of: lockStartTime) { newValue in
+                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                                lockStartHour = comps.hour ?? 22
+                                lockStartMinute = comps.minute ?? 0
+                                scheduleManager.lockStartHour = lockStartHour
+                                scheduleManager.lockStartMinute = lockStartMinute
+                            }
+
+                        Text("and")
+
+                        DatePicker("", selection: $lockEndTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                            .labelsHidden()
+                            .onChangeCompat(of: lockEndTime) { newValue in
+                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                                lockEndHour = comps.hour ?? 7
+                                lockEndMinute = comps.minute ?? 0
+                                scheduleManager.lockEndHour = lockEndHour
+                                scheduleManager.lockEndMinute = lockEndMinute
+                            }
+                    }
+                    .disabled(!lockScheduleEnabled)
+                    .opacity(lockScheduleEnabled ? 1 : 0.5)
+                }
+
+                if lockScheduleEnabled {
+                    Text("All locked apps will be automatically locked during these hours. Manually unlocked apps are not affected.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Section {
+                HStack(spacing: 4) {
+                    Toggle(isOn: $unlockScheduleEnabled) { EmptyView() }
+                        .toggleStyle(.checkbox)
+                        .onChangeCompat(of: unlockScheduleEnabled) { newValue in
+                            scheduleManager.unlockScheduleEnabled = newValue
+                        }
+
+                    HStack(spacing: 4) {
+                        Text("Unlock all apps between")
+
+                        DatePicker("", selection: $unlockStartTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                            .labelsHidden()
+                            .onChangeCompat(of: unlockStartTime) { newValue in
+                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                                unlockStartHour = comps.hour ?? 7
+                                unlockStartMinute = comps.minute ?? 0
+                                scheduleManager.unlockStartHour = unlockStartHour
+                                scheduleManager.unlockStartMinute = unlockStartMinute
+                            }
+
+                        Text("and")
+
+                        DatePicker("", selection: $unlockEndTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                            .labelsHidden()
+                            .onChangeCompat(of: unlockEndTime) { newValue in
+                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                                unlockEndHour = comps.hour ?? 22
+                                unlockEndMinute = comps.minute ?? 0
+                                scheduleManager.unlockEndHour = unlockEndHour
+                                scheduleManager.unlockEndMinute = unlockEndMinute
+                            }
+                    }
+                    .disabled(!unlockScheduleEnabled)
+                    .opacity(unlockScheduleEnabled ? 1 : 0.5)
+                }
+
+                if unlockScheduleEnabled {
+                    Text("All locked apps will be automatically unlocked during these hours. Manually locked apps are not affected.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
             }
 
             Section {
@@ -466,23 +585,53 @@ private struct BehaviorSettingsView: View {
         .scrollContentBackground(.hidden)
         .onAppear {
             sessionTimeoutMinutes = SessionManager.shared.sessionTimeout / 60
-            
-            // Load schedule dates
+
             let calendar = Calendar.current
             let now = Date()
-            
+
+            // Load face-unlock schedule dates
             var startComponents = calendar.dateComponents([.year, .month, .day], from: now)
             startComponents.hour = startHour
             startComponents.minute = startMinute
             if let startDate = calendar.date(from: startComponents) {
                 startTime = startDate
             }
-            
+
             var endComponents = calendar.dateComponents([.year, .month, .day], from: now)
             endComponents.hour = endHour
             endComponents.minute = endMinute
             if let endDate = calendar.date(from: endComponents) {
                 endTime = endDate
+            }
+
+            // Load lock-all schedule dates
+            var lockStartComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            lockStartComponents.hour = lockStartHour
+            lockStartComponents.minute = lockStartMinute
+            if let startDate = calendar.date(from: lockStartComponents) {
+                lockStartTime = startDate
+            }
+
+            var lockEndComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            lockEndComponents.hour = lockEndHour
+            lockEndComponents.minute = lockEndMinute
+            if let endDate = calendar.date(from: lockEndComponents) {
+                lockEndTime = endDate
+            }
+
+            // Load unlock-all schedule dates
+            var unlockStartComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            unlockStartComponents.hour = unlockStartHour
+            unlockStartComponents.minute = unlockStartMinute
+            if let startDate = calendar.date(from: unlockStartComponents) {
+                unlockStartTime = startDate
+            }
+
+            var unlockEndComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            unlockEndComponents.hour = unlockEndHour
+            unlockEndComponents.minute = unlockEndMinute
+            if let endDate = calendar.date(from: unlockEndComponents) {
+                unlockEndTime = endDate
             }
         }
     }
@@ -578,6 +727,7 @@ struct LockedAppsSettingsView: View {
     @State private var installedApps: [InstalledAppsScanner.DiscoveredApp] = []
     @State private var isLoading = false
     @State private var searchText = ""
+    @State private var path = NavigationPath()
 
     private var filteredLockedApps: [LockedApp] {
         if searchText.isEmpty {
@@ -602,31 +752,36 @@ struct LockedAppsSettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if showingAddApps {
-                addAppsHeader
-                Divider()
-                if isLoading {
-                    loadingView
-                } else if filteredUnlockedApps.isEmpty {
-                    emptyUnlockedView
+        NavigationStack(path: $path) {
+            VStack(spacing: 0) {
+                if showingAddApps {
+                    addAppsHeader
+                    Divider()
+                    if isLoading {
+                        loadingView
+                    } else if filteredUnlockedApps.isEmpty {
+                        emptyUnlockedView
+                    } else {
+                        unlockedAppsList
+                    }
                 } else {
-                    unlockedAppsList
-                }
-            } else {
-                lockedAppsHeader
-                Divider()
-                if lockedAppsManager.lockedApps.isEmpty {
-                    emptyLockedView
-                } else if filteredLockedApps.isEmpty {
-                    noSearchResultsView
-                } else {
-                    lockedAppsList
+                    lockedAppsHeader
+                    Divider()
+                    if lockedAppsManager.lockedApps.isEmpty {
+                        emptyLockedView
+                    } else if filteredLockedApps.isEmpty {
+                        noSearchResultsView
+                    } else {
+                        lockedAppsList
+                    }
                 }
             }
-        }
-        .onAppear {
-            loadAppsIfNeeded()
+            .onAppear {
+                loadAppsIfNeeded()
+            }
+            .navigationDestination(for: LockedApp.self) { app in
+                LockedAppDetailView(app: app, path: $path)
+            }
         }
     }
 
@@ -828,11 +983,13 @@ struct LockedAppsSettingsView: View {
         ScrollView {
             VStack(spacing: 0) {
                 ForEach(filteredLockedApps, id: \.bundleIdentifier) { app in
-                    LockedRowView(app: app) {
+                    LockedRowView(app: app, onToggle: {
                         withAnimation(.spring(response: 0.18, dampingFraction: 0.8, blendDuration: 0)) {
                             lockedAppsManager.unlockApp(app.bundleIdentifier)
                         }
-                    }
+                    }, onClick: {
+                        path.append(app)
+                    })
                     .transition(.asymmetric(
                         insertion: .opacity.combined(with: .scale(scale: 0.95)),
                         removal: .scale(scale: 0.7).combined(with: .opacity)
@@ -889,36 +1046,51 @@ struct LockedAppsSettingsView: View {
 private struct LockedRowView: View {
     let app: LockedApp
     let onToggle: () -> Void
+    let onClick: () -> Void
     @State private var isLocked = true
     @State private var isHovered = false
     @State private var isProcessing = false
-
+    
     var body: some View {
         HStack(spacing: 12) {
-            if let icon = app.icon {
-                Image(nsImage: icon)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 32, height: 32)
-            } else {
-                Image(systemName: "app.fill")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 32, height: 32)
-                    .foregroundColor(.secondary)
-            }
+            HStack(spacing: 12) {
+                if let icon = app.icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 32, height: 32)
+                } else {
+                    Image(systemName: "app.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 32, height: 32)
+                        .foregroundColor(.secondary)
+                }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(app.displayName)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                Text(app.bundleIdentifier)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(app.displayName)
+                            .font(.system(size: 13, weight: .medium))
+                            .lineLimit(1)
+                        
+                        if app.customSessionTimeout != nil {
+                            Image(systemName: "timer")
+                                .font(.system(size: 10))
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    Text(app.bundleIdentifier)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
             }
-
-            Spacer()
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onClick()
+            }
 
             Toggle("", isOn: $isLocked)
                 .toggleStyle(.switch)
@@ -988,6 +1160,159 @@ private struct UnlockedRowView: View {
         .background(isHovered ? Color(nsColor: .controlBackgroundColor) : Color.clear)
         .onHover { hovering in
             isHovered = hovering
+        }
+    }
+}
+
+private struct LockedAppDetailView: View {
+    let app: LockedApp
+    @Binding var path: NavigationPath
+    
+    @ObservedObject var lockedAppsManager = LockedAppsManager.shared
+    
+    @State private var hasCustomTimer = false
+    @State private var customTimeoutMinutes: Double = 5
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header with Back Button
+            HStack {
+                Button(action: {
+                    path.removeLast()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
+                
+                Text(app.displayName)
+                    .font(.system(size: 14, weight: .bold))
+                
+                Spacer()
+                
+                // Placeholder to balance the back button
+                Text("Back")
+                    .font(.system(size: 13))
+                    .opacity(0)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            
+            Divider()
+            
+            Form {
+                Section {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(spacing: 12) {
+                            if let icon = app.icon {
+                                Image(nsImage: icon)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 48, height: 48)
+                            } else {
+                                Image(systemName: "app.fill")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 48, height: 48)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(app.displayName)
+                                    .font(.system(size: 14, weight: .semibold))
+                                Text(app.bundleIdentifier)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                        
+                        Divider()
+                        
+                        // Custom session timer configurations
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Toggle("Custom Session Timer", isOn: $hasCustomTimer)
+                                    .toggleStyle(.checkbox)
+                                
+                                Spacer()
+                                
+                                if hasCustomTimer {
+                                    if customTimeoutMinutes == 0 {
+                                        Text("Lock Immediately")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                    } else {
+                                        Text("\(Int(customTimeoutMinutes)) min")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                    }
+                                } else {
+                                    let globalTimeout = SessionManager.shared.sessionTimeout / 60
+                                    if globalTimeout == 0 {
+                                        Text("Using Global Timer (Lock Immediately)")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        Text("Using Global Timer (\(Int(globalTimeout)) min)")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                            
+                            HStack(spacing: 12) {
+                                Slider(value: $customTimeoutMinutes, in: 0...30, step: 1)
+                                    .disabled(!hasCustomTimer)
+                                
+                                Text("0-30m")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                            .opacity(hasCustomTimer ? 1.0 : 0.5)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear {
+            if let activeApp = lockedAppsManager.lockedApps.first(where: { $0.bundleIdentifier == app.bundleIdentifier }) {
+                if let custom = activeApp.customSessionTimeout {
+                    hasCustomTimer = true
+                    customTimeoutMinutes = custom / 60
+                } else {
+                    hasCustomTimer = false
+                    // Restore last selection from UserDefaults if available, otherwise default to 5
+                    let lastSelection = UserDefaults.standard.double(forKey: "lastCustomTimeout_\(app.bundleIdentifier)")
+                    customTimeoutMinutes = lastSelection > 0 ? lastSelection : 5
+                }
+            }
+        }
+        .onChangeCompat(of: hasCustomTimer) { newValue in
+            saveChanges(hasCustom: newValue, minutes: customTimeoutMinutes)
+        }
+        .onChangeCompat(of: customTimeoutMinutes) { newValue in
+            saveChanges(hasCustom: hasCustomTimer, minutes: newValue)
+        }
+    }
+    
+    private func saveChanges(hasCustom: Bool, minutes: Double) {
+        let timeout: TimeInterval? = hasCustom ? (minutes * 60) : nil
+        lockedAppsManager.updateCustomSessionTimeout(for: app.bundleIdentifier, timeout: timeout)
+        if hasCustom {
+            UserDefaults.standard.set(minutes, forKey: "lastCustomTimeout_\(app.bundleIdentifier)")
         }
     }
 }

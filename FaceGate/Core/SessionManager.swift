@@ -11,9 +11,14 @@ final class SessionManager: ObservableObject {
     @Published private(set) var activeSessions: [String: Date] = [:]
 
     /// Session timeout duration (read from UserDefaults, with fallback).
+    /// A stored value of 0 means "lock immediately" — no session is created.
+    /// When no value has been stored yet, returns the default (5 minutes).
     var sessionTimeout: TimeInterval {
         let stored = UserDefaults.standard.double(forKey: FGConstants.sessionTimeoutKey)
-        return stored > 0 ? stored : FGConstants.defaultSessionTimeout
+        if UserDefaults.standard.object(forKey: FGConstants.sessionTimeoutKey) != nil {
+            return stored
+        }
+        return FGConstants.defaultSessionTimeout
     }
 
     private var cleanupTimer: Timer?
@@ -25,9 +30,19 @@ final class SessionManager: ObservableObject {
     // MARK: - Public API
 
     /// Record that an app has been successfully unlocked.
-    /// The session will expire after `sessionTimeout` seconds.
+    /// The session will expire after `sessionTimeout` seconds, or the app's custom timeout if configured.
+    /// A duration of 0 (lock immediately) skips session creation — the app locks on next activation.
     func createSession(for bundleIdentifier: String) {
-        let expiry = Date().addingTimeInterval(sessionTimeout)
+        var duration = sessionTimeout
+        
+        if let app = LockedAppsManager.shared.lockedApps.first(where: { $0.bundleIdentifier == bundleIdentifier }),
+           let customTimeout = app.customSessionTimeout {
+            duration = customTimeout
+        }
+        
+        guard duration > 0 else { return }
+        
+        let expiry = Date().addingTimeInterval(duration)
         activeSessions[bundleIdentifier] = expiry
     }
 
@@ -54,8 +69,17 @@ final class SessionManager: ObservableObject {
     }
 
     /// Update the session timeout duration.
+    /// Applies the change to all existing sessions immediately.
     func setSessionTimeout(_ timeout: TimeInterval) {
         UserDefaults.standard.set(timeout, forKey: FGConstants.sessionTimeoutKey)
+        if timeout <= 0 {
+            revokeAllSessions()
+        } else {
+            let newExpiry = Date().addingTimeInterval(timeout)
+            for (bundleId, _) in activeSessions {
+                activeSessions[bundleId] = newExpiry
+            }
+        }
     }
 
     // MARK: - Private
