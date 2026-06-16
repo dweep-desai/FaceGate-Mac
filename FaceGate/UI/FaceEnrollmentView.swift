@@ -36,8 +36,8 @@ struct FaceEnrollmentView: View {
                     .frame(maxWidth: 300)
                     .animation(.easeInOut(duration: 0.2), value: enrollmentManager.statusMessage)
             }
-            .padding(.top, 16)
-            .padding(.bottom, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
 
             // Camera preview with face guide.
             ZStack {
@@ -85,16 +85,16 @@ struct FaceEnrollmentView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding(.horizontal, 40)
-                .padding(.top, 12)
+                .padding(.top, 8)
             }
 
             Spacer()
 
             // Action buttons.
             actionButtons
-                .padding(.bottom, 20)
+                .padding(.bottom, 16)
         }
-        .frame(width: 420, height: isInSettings ? 460 : 420)
+        .frame(width: 420, height: isInSettings ? 490 : 450)
         .onAppear {
             enrollmentManager.startEnrollment()
         }
@@ -152,9 +152,14 @@ struct FaceEnrollmentView: View {
             }
 
         case .capturing:
-            secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
-                enrollmentManager.cancelEnrollment()
-                onComplete()
+            VStack(spacing: 8) {
+                primaryButton("Recapture") {
+                    enrollmentManager.startEnrollment()
+                }
+                secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
+                    enrollmentManager.cancelEnrollment()
+                    onComplete()
+                }
             }
 
         case .processing:
