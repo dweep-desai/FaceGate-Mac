@@ -225,11 +225,11 @@ final class FaceAuthManager: ObservableObject {
             var isChallengeSatisfied = false
             switch challenge {
             case .turnLeft:
-                isChallengeSatisfied = yaw < -0.15
+                isChallengeSatisfied = yaw < -0.12
             case .turnRight:
-                isChallengeSatisfied = yaw > 0.15
+                isChallengeSatisfied = yaw > 0.12
             case .tiltHead:
-                isChallengeSatisfied = abs(roll) > 0.15
+                isChallengeSatisfied = abs(roll) > 0.12
             }
 
             if isChallengeSatisfied {

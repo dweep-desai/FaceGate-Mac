@@ -149,11 +149,11 @@ final class FaceEnrollmentManager: ObservableObject {
             case .straight:
                 isPositionValid = abs(yaw) < 0.15 && abs(roll) < 0.12
             case .left:
-                isPositionValid = yaw < -0.15
+                isPositionValid = yaw < -0.12
             case .right:
-                isPositionValid = yaw > 0.15
+                isPositionValid = yaw > 0.12
             case .tilt:
-                isPositionValid = abs(roll) > 0.15
+                isPositionValid = abs(roll) > 0.12
             }
 
             if !isPositionValid {
