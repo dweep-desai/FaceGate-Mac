@@ -9,6 +9,7 @@ final class FaceAuthManager: ObservableObject {
     /// Current authentication state.
     @Published var state: FaceAuthState = .idle
     @Published var statusMessage: String = ""
+    @Published var warningMessage: String = ""
 
     /// The camera manager — exposed for binding the preview layer.
     let cameraManager = CameraManager()
@@ -123,6 +124,7 @@ final class FaceAuthManager: ObservableObject {
         authStartTime = Date()
         state = .scanning
         statusMessage = "Looking for your face…"
+        warningMessage = ""
         activeChallenge = nil
 
         cameraManager.onFrameCaptured = { [weak self] pixelBuffer in
@@ -150,6 +152,8 @@ final class FaceAuthManager: ObservableObject {
         cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
         state = .idle
+        statusMessage = ""
+        warningMessage = ""
         enrolledEmbeddings = []
         onResult = nil
     }
@@ -177,11 +181,16 @@ final class FaceAuthManager: ObservableObject {
                 DispatchQueue.main.async {
                     if observations.isEmpty {
                         self.statusMessage = "Looking for your face…"
+                        self.warningMessage = ""
                     } else {
-                        self.statusMessage = "Only one face allowed"
+                        self.warningMessage = "Only one face allowed"
                     }
                 }
                 return
+            }
+
+            DispatchQueue.main.async {
+                self.warningMessage = ""
             }
 
             // Crop the face.
@@ -225,11 +234,11 @@ final class FaceAuthManager: ObservableObject {
             var isChallengeSatisfied = false
             switch challenge {
             case .turnLeft:
-                isChallengeSatisfied = yaw < -0.15
+                isChallengeSatisfied = yaw < -0.12
             case .turnRight:
-                isChallengeSatisfied = yaw > 0.15
+                isChallengeSatisfied = yaw > 0.12
             case .tiltHead:
-                isChallengeSatisfied = abs(roll) > 0.15
+                isChallengeSatisfied = abs(roll) > 0.12
             }
 
             if isChallengeSatisfied {

@@ -59,7 +59,7 @@ struct SetupView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.easeInOut(duration: 0.3), value: currentStep)
         }
-        .frame(width: 520, height: 520)
+        .frame(width: 560, height: 620)
     }
 
     // MARK: - Steps

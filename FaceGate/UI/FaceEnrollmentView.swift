@@ -11,6 +11,21 @@ struct FaceEnrollmentView: View {
     /// Whether this is shown in settings (allows cancel) vs onboarding (allows skip).
     var isInSettings: Bool = false
 
+    private var staticStatusMessage: String {
+        switch enrollmentManager.state {
+        case .idle:
+            return "Position your face in the frame"
+        case .capturing:
+            return "Follow the prompts on the camera screen"
+        case .processing:
+            return "Processing face data…"
+        case .success:
+            return "Face enrolled successfully!"
+        case .failed(let message):
+            return "Enrollment failed: \(message)"
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header.
@@ -29,15 +44,22 @@ struct FaceEnrollmentView: View {
                 Text("Face Enrollment")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
 
-                Text(enrollmentManager.statusMessage)
+                Text(staticStatusMessage)
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 300)
-                    .animation(.easeInOut(duration: 0.2), value: enrollmentManager.statusMessage)
             }
-            .padding(.top, 16)
-            .padding(.bottom, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
+
+            // Warning message (above the video screen)
+            Text(enrollmentManager.warningMessage)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.red.opacity(0.8))
+                .multilineTextAlignment(.center)
+                .frame(height: 20)
+                .padding(.bottom, 6)
 
             // Camera preview with face guide.
             ZStack {
@@ -54,6 +76,7 @@ struct FaceEnrollmentView: View {
                     if enrollmentManager.state == .capturing {
                         directionIndicator(for: enrollmentManager.currentStep)
                     }
+
                 } else if enrollmentManager.state == .processing {
                     processingView
                 } else if enrollmentManager.state == .success {
@@ -70,6 +93,18 @@ struct FaceEnrollmentView: View {
                     .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
             )
 
+            // Dynamic Step/Instruction text below the video box
+            if enrollmentManager.state == .capturing || enrollmentManager.state == .idle {
+                Text(enrollmentManager.statusMessage)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Color.white.opacity(0.12)))
+                    .padding(.top, 10)
+                    .multilineTextAlignment(.center)
+            }
+
             // Progress bar.
             if enrollmentManager.state == .capturing {
                 VStack(spacing: 6) {
@@ -85,16 +120,16 @@ struct FaceEnrollmentView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding(.horizontal, 40)
-                .padding(.top, 12)
+                .padding(.top, 8)
             }
 
             Spacer()
 
             // Action buttons.
             actionButtons
-                .padding(.bottom, 20)
+                .padding(.bottom, 16)
         }
-        .frame(width: 420, height: isInSettings ? 460 : 420)
+        .frame(width: 420, height: isInSettings ? 530 : 490)
         .onAppear {
             enrollmentManager.startEnrollment()
         }
@@ -152,9 +187,14 @@ struct FaceEnrollmentView: View {
             }
 
         case .capturing:
-            secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
-                enrollmentManager.cancelEnrollment()
-                onComplete()
+            VStack(spacing: 8) {
+                primaryButton("Recapture") {
+                    enrollmentManager.startEnrollment()
+                }
+                secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
+                    enrollmentManager.cancelEnrollment()
+                    onComplete()
+                }
             }
 
         case .processing:
@@ -209,12 +249,11 @@ struct FaceEnrollmentView: View {
                 Spacer()
                 HStack {
                     Spacer()
-                    Image(systemName: indicatorIcon(for: step))
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.blue)
-                        .padding(12)
-                        .background(Circle().fill(Color.black.opacity(0.6)))
-                        .padding(12)
+                    AnimatedDirectionIndicator(
+                        icon: indicatorIcon(for: step),
+                        direction: step == .left ? .left : (step == .right ? .right : .tilt)
+                    )
+                    .padding(8)
                 }
             }
         }
@@ -225,7 +264,7 @@ struct FaceEnrollmentView: View {
         case .straight: return ""
         case .left: return "arrow.left.circle.fill"
         case .right: return "arrow.right.circle.fill"
-        case .tilt: return "arrow.turn.up.left.circle.fill"
+        case .tilt: return "arrowshape.turn.up.right.fill"
         }
     }
 }

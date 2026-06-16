@@ -56,11 +56,47 @@ struct AuthOverlayView: View {
                 Text("FaceGate")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.5))
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 8)
+
+                // "App Name is Locked".
+                Text(isAppLocking ? "\(appName) is Locked" : appName)
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 6)
+
+                // Subtitle message / Timeout.
+                if isTimedOut {
+                    Text("Face Recognition Timed Out")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.red.opacity(0.8))
+                        .padding(.bottom, 10)
+                } else {
+                    Text(subtitleMessage ?? (isAppLocking ? "Authenticate to unlock this app" : "Authenticate to proceed"))
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.white.opacity(0.6))
+                        .padding(.bottom, 10)
+                }
+
+                // Warning message (above the video screen)
+                Text(faceAuthManager.warningMessage)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.red.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .frame(height: 20)
+                    .padding(.bottom, 8)
 
                 // Face Unlock camera preview (if available and enabled).
                 if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField && !isTimedOut {
                     faceUnlockView
+                        .padding(.bottom, 12)
+                    
+                    // Dynamic Liveness Instruction text below the video box
+                    Text(faceAuthManager.statusMessage)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Color.white.opacity(0.12)))
                         .padding(.bottom, 16)
                 } else {
                     // App icon (shown when face unlock is not active).
@@ -70,33 +106,6 @@ struct AuthOverlayView: View {
                         .frame(width: 80, height: 80)
                         .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 4)
                         .padding(.bottom, 16)
-                }
-
-                // "App Name is Locked".
-                Text(isAppLocking ? "\(appName) is Locked" : appName)
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
-                    .padding(.bottom, 8)
-
-                // Status message.
-                if isTimedOut {
-                    Text("Face Recognition Timed Out")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundColor(.red.opacity(0.8))
-                        .padding(.bottom, 24)
-                } else if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField {
-                    Text(faceAuthManager.statusMessage.isEmpty
-                         ? (subtitleMessage ?? (isAppLocking ? "Authenticate to unlock this app" : "Authenticate to proceed"))
-                         : faceAuthManager.statusMessage)
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(.white.opacity(0.6))
-                        .padding(.bottom, 24)
-                        .animation(.easeInOut(duration: 0.2), value: faceAuthManager.statusMessage)
-                } else {
-                    Text(subtitleMessage ?? (isAppLocking ? "Authenticate to unlock this app" : "Authenticate to proceed"))
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(.white.opacity(0.6))
-                        .padding(.bottom, 24)
                 }
 
                 // Auth state feedback.
@@ -544,12 +553,11 @@ struct AuthOverlayView: View {
             Spacer()
             HStack {
                 Spacer()
-                Image(systemName: indicatorIcon(for: challenge))
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.blue)
-                    .padding(12)
-                    .background(Circle().fill(Color.black.opacity(0.6)))
-                    .padding(12)
+                AnimatedDirectionIndicator(
+                    icon: indicatorIcon(for: challenge),
+                    direction: challenge == .turnLeft ? .left : (challenge == .turnRight ? .right : .tilt)
+                )
+                .padding(8)
             }
         }
     }
@@ -558,7 +566,7 @@ struct AuthOverlayView: View {
         switch challenge {
         case .turnLeft: return "arrow.left.circle.fill"
         case .turnRight: return "arrow.right.circle.fill"
-        case .tiltHead: return "arrow.turn.up.left.circle.fill"
+        case .tiltHead: return "arrowshape.turn.up.right.fill"
         }
     }
 }

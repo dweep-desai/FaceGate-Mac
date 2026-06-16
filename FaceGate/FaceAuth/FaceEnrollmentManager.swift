@@ -10,6 +10,7 @@ final class FaceEnrollmentManager: ObservableObject {
     @Published var capturedCount: Int = 0
     @Published var currentQuality: Float = 0
     @Published var statusMessage: String = "Position your face in the frame"
+    @Published var warningMessage: String = ""
 
     /// Target number of frames to capture.
     let targetFrameCount = FGConstants.enrollmentFrameCount
@@ -76,7 +77,8 @@ final class FaceEnrollmentManager: ObservableObject {
         capturedCount = 0
         framesSinceLastCapture = captureInterval  // Allow immediate first capture
         state = .capturing
-        statusMessage = "Look at the camera"
+        statusMessage = "Look straight at the camera"
+        warningMessage = ""
 
         cameraManager.onFrameCaptured = { [weak self] pixelBuffer in
             self?.processEnrollmentFrame(pixelBuffer)
@@ -93,6 +95,7 @@ final class FaceEnrollmentManager: ObservableObject {
         state = .idle
         capturedCount = 0
         statusMessage = "Enrollment cancelled"
+        warningMessage = ""
     }
 
     /// Re-enroll: delete existing data and start fresh.
@@ -116,9 +119,9 @@ final class FaceEnrollmentManager: ObservableObject {
             guard results.count == 1 else {
                 DispatchQueue.main.async {
                     if results.isEmpty {
-                        self.statusMessage = "No face detected — look at the camera"
+                        self.warningMessage = "No face detected — look at the camera"
                     } else {
-                        self.statusMessage = "Multiple faces detected — only one face allowed"
+                        self.warningMessage = "Multiple faces detected — only one face allowed"
                     }
                 }
                 return
@@ -128,12 +131,13 @@ final class FaceEnrollmentManager: ObservableObject {
 
             DispatchQueue.main.async {
                 self.currentQuality = quality
+                self.warningMessage = ""
             }
 
             // Reject low-quality captures.
             guard quality >= FGConstants.minimumCaptureQuality else {
                 DispatchQueue.main.async {
-                    self.statusMessage = "Poor lighting or angle — adjust position"
+                    self.warningMessage = "Poor lighting or angle — adjust position"
                 }
                 return
             }
@@ -149,11 +153,11 @@ final class FaceEnrollmentManager: ObservableObject {
             case .straight:
                 isPositionValid = abs(yaw) < 0.15 && abs(roll) < 0.12
             case .left:
-                isPositionValid = yaw < -0.15
+                isPositionValid = yaw < -0.12
             case .right:
-                isPositionValid = yaw > 0.15
+                isPositionValid = yaw > 0.12
             case .tilt:
-                isPositionValid = abs(roll) > 0.15
+                isPositionValid = abs(roll) > 0.12
             }
 
             if !isPositionValid {

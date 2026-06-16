@@ -83,7 +83,7 @@ enum FGConstants {
     static let enrollmentFrameCount = 8
 
     /// Minimum face capture quality score (0.0–1.0) for enrollment.
-    static let minimumCaptureQuality: Float = 0.4
+    static let minimumCaptureQuality: Float = 0.35
 
     // MARK: - File Paths
 
