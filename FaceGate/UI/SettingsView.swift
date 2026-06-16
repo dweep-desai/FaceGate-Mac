@@ -544,17 +544,23 @@ private struct BehaviorSettingsView: View {
                             .cornerRadius(4)
                     }
                     
-                    HStack(spacing: 12) {
-                        Picker("Third Modifier", selection: $emergencyKillModifier) {
+                    HStack(spacing: 8) {
+                        Text("Third Modifier:")
+                            .font(.system(size: 11))
+                        Picker("", selection: $emergencyKillModifier) {
                             Text("⌘ Command").tag("Command")
                             Text("⇧ Shift").tag("Shift")
                         }
                         .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(width: 130)
                         .onChangeCompat(of: emergencyKillModifier) { _ in
                             GlobalHotkeyManager.shared.reRegisterShortcut()
                         }
-                        
-                        Picker("Key", selection: $emergencyKillKey) {
+
+                        Text("Key:")
+                            .font(.system(size: 11))
+                        Picker("", selection: $emergencyKillKey) {
                             Text("` (Backtick)").tag("`")
                             Text("Escape").tag("Escape")
                             Text("Space").tag("Space")
@@ -564,6 +570,8 @@ private struct BehaviorSettingsView: View {
                             Text("Delete").tag("Delete")
                         }
                         .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(width: 130)
                         .onChangeCompat(of: emergencyKillKey) { _ in
                             GlobalHotkeyManager.shared.reRegisterShortcut()
                         }

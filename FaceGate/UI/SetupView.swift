@@ -14,6 +14,9 @@ struct SetupView: View {
     /// Called when setup is complete.
     var onSetupComplete: () -> Void
 
+    /// Called when user chooses to open settings instead.
+    var onOpenSettings: (() -> Void)?
+
     enum SetupStep: Int, CaseIterable {
         case welcome
         case permissions
@@ -292,29 +295,43 @@ struct SetupView: View {
 
             Spacer()
 
-            setupButton("Start Protecting") {
-                UserDefaults.standard.set(true, forKey: FGConstants.setupCompletedKey)
-                UserDefaults.standard.set(true, forKey: FGConstants.touchIDEnabledKey)
-                UserDefaults.standard.set(true, forKey: FGConstants.launchAtLoginKey)
-                if #available(macOS 13.0, *) {
-                    do {
-                        try SMAppService.mainApp.register()
-                    } catch {
-                        print("Failed to automatically register login item during setup: \(error)")
-                    }
+            VStack(spacing: 12) {
+                setupButton("Start Protecting") {
+                    finalizeSetup()
+                    onSetupComplete()
                 }
-                onSetupComplete()
-                for window in NSApp.windows {
-                    if window.title == "FaceGate Setup" {
-                        window.close()
-                    }
+
+                Button("Configure Settings") {
+                    finalizeSetup()
+                    onOpenSettings?()
                 }
+                .buttonStyle(.plain)
+                .foregroundColor(.blue)
+                .font(.system(size: 13))
             }
             .padding(.bottom, 30)
         }
     }
 
     // MARK: - Helpers
+
+    private func finalizeSetup() {
+        UserDefaults.standard.set(true, forKey: FGConstants.setupCompletedKey)
+        UserDefaults.standard.set(true, forKey: FGConstants.touchIDEnabledKey)
+        UserDefaults.standard.set(true, forKey: FGConstants.launchAtLoginKey)
+        if #available(macOS 13.0, *) {
+            do {
+                try SMAppService.mainApp.register()
+            } catch {
+                print("Failed to automatically register login item during setup: \(error)")
+            }
+        }
+        for window in NSApp.windows {
+            if window.title == "FaceGate Setup" {
+                window.close()
+            }
+        }
+    }
 
     private func setupButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {

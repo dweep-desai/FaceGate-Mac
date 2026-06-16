@@ -157,15 +157,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let setupView = SetupView {
-            AppMonitor.shared.startMonitoring()
-            // Find and close the setup window
-            for window in NSApp.windows {
-                if window.title == "FaceGate Setup" {
-                    window.close()
+        let setupView = SetupView(
+            onSetupComplete: {
+                AppMonitor.shared.startMonitoring()
+                // Find and close the setup window
+                for window in NSApp.windows {
+                    if window.title == "FaceGate Setup" {
+                        window.close()
+                    }
                 }
+            },
+            onOpenSettings: {
+                AppMonitor.shared.startMonitoring()
+                // Close the setup window
+                for window in NSApp.windows {
+                    if window.title == "FaceGate Setup" {
+                        window.close()
+                    }
+                }
+                // Open settings window
+                NotificationCenter.default.post(name: .openSettings, object: nil)
             }
-        }
+        )
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 620),
