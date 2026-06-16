@@ -22,6 +22,14 @@ final class LockedAppsManager: ObservableObject {
         lockedApps.contains { $0.bundleIdentifier == bundleIdentifier && $0.isLocked }
     }
 
+    /// Update the custom session timeout for an app.
+    func updateCustomSessionTimeout(for bundleIdentifier: String, timeout: TimeInterval?) {
+        if let index = lockedApps.firstIndex(where: { $0.bundleIdentifier == bundleIdentifier }) {
+            lockedApps[index].customSessionTimeout = timeout
+            saveLockedApps()
+        }
+    }
+
     /// Add an app to the locked list.
     func lockApp(_ app: LockedApp) {
         if let index = lockedApps.firstIndex(where: { $0.bundleIdentifier == app.bundleIdentifier }) {

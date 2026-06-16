@@ -25,9 +25,16 @@ final class SessionManager: ObservableObject {
     // MARK: - Public API
 
     /// Record that an app has been successfully unlocked.
-    /// The session will expire after `sessionTimeout` seconds.
+    /// The session will expire after `sessionTimeout` seconds, or the app's custom timeout if configured.
     func createSession(for bundleIdentifier: String) {
-        let expiry = Date().addingTimeInterval(sessionTimeout)
+        var duration = sessionTimeout
+        
+        if let app = LockedAppsManager.shared.lockedApps.first(where: { $0.bundleIdentifier == bundleIdentifier }),
+           let customTimeout = app.customSessionTimeout {
+            duration = customTimeout
+        }
+        
+        let expiry = Date().addingTimeInterval(duration)
         activeSessions[bundleIdentifier] = expiry
     }
 

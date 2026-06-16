@@ -15,14 +15,18 @@ struct LockedApp: Codable, Identifiable, Hashable {
     /// Whether this app is currently locked.
     var isLocked: Bool
 
+    /// Custom session timeout in seconds for this individual app.
+    var customSessionTimeout: TimeInterval?
+
     var id: String { bundleIdentifier }
 
     /// Creates a LockedApp from an NSRunningApplication or file path.
-    init(bundleIdentifier: String, displayName: String, iconData: Data? = nil, isLocked: Bool = true) {
+    init(bundleIdentifier: String, displayName: String, iconData: Data? = nil, isLocked: Bool = true, customSessionTimeout: TimeInterval? = nil) {
         self.bundleIdentifier = bundleIdentifier
         self.displayName = displayName
         self.iconData = iconData
         self.isLocked = isLocked
+        self.customSessionTimeout = customSessionTimeout
     }
 
     /// Convenience: get the NSImage icon from stored data.
