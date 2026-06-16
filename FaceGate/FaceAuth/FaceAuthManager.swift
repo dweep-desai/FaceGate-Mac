@@ -71,7 +71,35 @@ final class FaceAuthManager: ObservableObject {
     var isAvailable: Bool {
         UserDefaults.standard.bool(forKey: FGConstants.faceUnlockEnabledKey) &&
         UserDefaults.standard.bool(forKey: FGConstants.faceEnrolledKey) &&
-        dataStore.hasEnrollment
+        dataStore.hasEnrollment &&
+        !isFaceUnlockTemporarilyDisabledByHours()
+    }
+
+    /// Checks if face unlock is temporarily disabled based on the current hour/minute settings.
+    func isFaceUnlockTemporarilyDisabledByHours() -> Bool {
+        guard UserDefaults.standard.bool(forKey: FGConstants.disableFaceUnlockHoursKey) else { return false }
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let currentComponents = calendar.dateComponents([.hour, .minute], from: now)
+        guard let currentHour = currentComponents.hour, let currentMinute = currentComponents.minute else { return false }
+        
+        let startHour = UserDefaults.standard.integer(forKey: FGConstants.faceUnlockDisabledStartHourKey)
+        let startMinute = UserDefaults.standard.integer(forKey: FGConstants.faceUnlockDisabledStartMinuteKey)
+        let endHour = UserDefaults.standard.integer(forKey: FGConstants.faceUnlockDisabledEndHourKey)
+        let endMinute = UserDefaults.standard.integer(forKey: FGConstants.faceUnlockDisabledEndMinuteKey)
+        
+        let currentTotalMinutes = currentHour * 60 + currentMinute
+        let startTotalMinutes = startHour * 60 + startMinute
+        let endTotalMinutes = endHour * 60 + endMinute
+        
+        if startTotalMinutes <= endTotalMinutes {
+            // Range does NOT cross midnight (e.g. 9:00 AM to 5:00 PM)
+            return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes < endTotalMinutes
+        } else {
+            // Range crosses midnight (e.g. 10:00 PM to 7:00 AM)
+            return currentTotalMinutes >= startTotalMinutes || currentTotalMinutes < endTotalMinutes
+        }
     }
 
     /// Begin face authentication. Activates the camera and starts scanning.

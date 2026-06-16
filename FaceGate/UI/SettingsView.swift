@@ -332,6 +332,15 @@ private struct BehaviorSettingsView: View {
     @AppStorage("emergencyKillModifier") private var emergencyKillModifier = "Command"
     @AppStorage("emergencyKillKey") private var emergencyKillKey = "`"
 
+    @AppStorage(FGConstants.disableFaceUnlockHoursKey) private var disableFaceUnlockHours = false
+    @AppStorage(FGConstants.faceUnlockDisabledStartHourKey) private var startHour = 22
+    @AppStorage(FGConstants.faceUnlockDisabledStartMinuteKey) private var startMinute = 0
+    @AppStorage(FGConstants.faceUnlockDisabledEndHourKey) private var endHour = 7
+    @AppStorage(FGConstants.faceUnlockDisabledEndMinuteKey) private var endMinute = 0
+
+    @State private var startTime = Date()
+    @State private var endTime = Date()
+
     private var shortcutModifierSymbol: String {
         emergencyKillModifier == "Command" ? "⌘" : "⇧"
     }
@@ -365,6 +374,38 @@ private struct BehaviorSettingsView: View {
                 }
             } header: {
                 Text("Locking")
+            }
+
+            Section {
+                Toggle("Disable Face Unlock during certain hours", isOn: $disableFaceUnlockHours)
+                
+                if disableFaceUnlockHours {
+                    HStack {
+                        DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                            .onChangeCompat(of: startTime) { newValue in
+                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                                startHour = comps.hour ?? 22
+                                startMinute = comps.minute ?? 0
+                            }
+                        
+                        Spacer()
+                        
+                        DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                            .onChangeCompat(of: endTime) { newValue in
+                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                                endHour = comps.hour ?? 7
+                                endMinute = comps.minute ?? 0
+                            }
+                    }
+                    
+                    Text("During these hours, App Lock remains active but face recognition is bypassed, forcing password/Touch ID entry.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            } header: {
+                Text("Face Unlock Schedule")
             }
 
             Section {
@@ -425,6 +466,24 @@ private struct BehaviorSettingsView: View {
         .scrollContentBackground(.hidden)
         .onAppear {
             sessionTimeoutMinutes = SessionManager.shared.sessionTimeout / 60
+            
+            // Load schedule dates
+            let calendar = Calendar.current
+            let now = Date()
+            
+            var startComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            startComponents.hour = startHour
+            startComponents.minute = startMinute
+            if let startDate = calendar.date(from: startComponents) {
+                startTime = startDate
+            }
+            
+            var endComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            endComponents.hour = endHour
+            endComponents.minute = endMinute
+            if let endDate = calendar.date(from: endComponents) {
+                endTime = endDate
+            }
         }
     }
 

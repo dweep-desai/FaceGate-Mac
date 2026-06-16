@@ -174,6 +174,12 @@ struct AuthOverlayView: View {
                         }
                     }
                 }
+            } else if !authManager.isFaceUnlockAvailable {
+                if TouchIDAuth.shared.canUse {
+                    authenticateWithTouchID()
+                } else {
+                    showPasswordAuth()
+                }
             }
         }
         .onChangeCompat(of: authManager.authState) { newState in

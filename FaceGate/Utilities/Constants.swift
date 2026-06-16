@@ -48,6 +48,21 @@ enum FGConstants {
     /// Key: timestamp when temporary disable expires.
     static let protectionDisableExpiryKey = "protectionDisableExpiry"
 
+    /// Key: whether to disable face unlock during certain hours.
+    static let disableFaceUnlockHoursKey = "disableFaceUnlockHours"
+
+    /// Key: start hour for disabling face unlock.
+    static let faceUnlockDisabledStartHourKey = "faceUnlockDisabledStartHour"
+
+    /// Key: start minute for disabling face unlock.
+    static let faceUnlockDisabledStartMinuteKey = "faceUnlockDisabledStartMinute"
+
+    /// Key: end hour for disabling face unlock.
+    static let faceUnlockDisabledEndHourKey = "faceUnlockDisabledEndHour"
+
+    /// Key: end minute for disabling face unlock.
+    static let faceUnlockDisabledEndMinuteKey = "faceUnlockDisabledEndMinute"
+
     // MARK: - Defaults
 
     /// Default face unlock similarity threshold (balanced).
