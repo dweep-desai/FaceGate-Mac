@@ -22,6 +22,7 @@ struct AuthOverlayView: View {
     @State private var shakePassword: Bool = false
     @State private var faceAuthStarted: Bool = false
     @State private var isTimedOut: Bool = false
+    @State private var didAuthenticate: Bool = false
 
     var body: some View {
         ZStack {
@@ -182,9 +183,11 @@ struct AuthOverlayView: View {
                     if success {
                         // Small delay for visual feedback before dismissing.
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            onAuthenticated()
-                            authManager.resetAttempts()
-                        }
+                                guard !didAuthenticate else { return }
+                                didAuthenticate = true
+                                onAuthenticated()
+                                authManager.resetAttempts()
+                            }
                     }
                 }
             } else if !authManager.isFaceUnlockAvailable {
@@ -199,6 +202,8 @@ struct AuthOverlayView: View {
             if case .success = newState {
                 // Small delay for visual feedback before dismissing.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    guard !didAuthenticate else { return }
+                    didAuthenticate = true
                     onAuthenticated()
                     authManager.resetAttempts()
                 }
@@ -348,6 +353,8 @@ struct AuthOverlayView: View {
                         authManager.authenticateWithFace { success in
                             if success {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    guard !didAuthenticate else { return }
+                                    didAuthenticate = true
                                     onAuthenticated()
                                     authManager.resetAttempts()
                                 }
