@@ -141,6 +141,8 @@ struct FaceEnrollmentView: View {
         cameraAuthorization = AVCaptureDevice.authorizationStatus(for: .video)
         switch cameraAuthorization {
         case .authorized:
+            enrollmentManager.camera.permissionGranted = true
+            enrollmentManager.camera.error = nil
             enrollmentManager.startEnrollment()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { [weak enrollmentManager] granted in

@@ -70,10 +70,13 @@ final class CameraManager: NSObject, ObservableObject {
     // MARK: - Session Setup
 
     func configureSession() {
-        guard permissionGranted else {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        guard status == .authorized else {
+            permissionGranted = false
             error = .permissionDenied
             return
         }
+        permissionGranted = true
 
         captureSession.beginConfiguration()
         if captureSession.canSetSessionPreset(.hd1920x1080) {
