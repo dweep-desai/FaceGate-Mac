@@ -59,6 +59,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .openSetup,
             object: nil
         )
+
+        // Lock all apps when the Mac sleeps or locks (if enabled).
+        let wsNC = NSWorkspace.shared.notificationCenter
+        wsNC.addObserver(
+            self,
+            selector: #selector(systemWillSleep),
+            name: NSWorkspace.willSleepNotification,
+            object: nil
+        )
+        wsNC.addObserver(
+            self,
+            selector: #selector(systemWillSleep),
+            name: NSWorkspace.screensDidSleepNotification,
+            object: nil
+        )
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(systemWillSleep),
+            name: NSNotification.Name("com.apple.screenIsLocked"),
+            object: nil
+        )
     }
 
     var isAuthorizedToQuit = false
@@ -230,6 +251,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
 
         setupWindow = window
+    }
+
+    // MARK: - Sleep / Lock Handling
+
+    @objc private func systemWillSleep() {
+        guard UserDefaults.standard.bool(forKey: FGConstants.lockOnSleepKey) else { return }
+        SessionManager.shared.revokeAllSessions()
     }
 }
 

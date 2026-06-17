@@ -98,6 +98,9 @@ enum FGConstants {
     /// Key: user override timestamps for schedule (encoded [String: Bool]).
     static let userOverrideTimestampsKey = "userOverrideTimestamps"
 
+    /// Key: whether to lock all apps when the Mac sleeps or locks.
+    static let lockOnSleepKey = "lockOnSleep"
+
     // MARK: - Defaults
 
     /// Default face unlock similarity threshold (balanced).

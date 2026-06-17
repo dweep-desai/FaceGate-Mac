@@ -519,6 +519,7 @@ private struct AuthSettingsView: View {
 
 private struct BehaviorSettingsView: View {
     @AppStorage(FGConstants.launchAtLoginKey) private var launchAtLogin = false
+    @AppStorage(FGConstants.lockOnSleepKey) private var lockOnSleep = false
     @State private var sessionTimeoutMinutes: Double = FGConstants.defaultSessionTimeout / 60
 
     @AppStorage("emergencyKillModifier") private var emergencyKillModifier = "Command"
@@ -597,6 +598,18 @@ private struct BehaviorSettingsView: View {
                 }
             } header: {
                 Text("Locking")
+            }
+
+            Section {
+                Toggle(isOn: $lockOnSleep) {
+                    Text("Lock all apps when Mac sleeps or locks")
+                }
+                .toggleStyle(.checkbox)
+                if lockOnSleep {
+                    Text("All active unlock sessions will be revoked when the Mac goes to sleep, the display sleeps, or the screen is locked. This overrides app timers and indefinite unlock.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
             }
 
             Section {
