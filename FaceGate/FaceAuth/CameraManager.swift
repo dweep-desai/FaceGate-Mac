@@ -73,6 +73,8 @@ final class CameraManager: NSObject, ObservableObject {
             return
         }
 
+        enableVideoEffects()
+
         do {
             let input = try AVCaptureDeviceInput(device: camera)
             guard captureSession.canAddInput(input) else {
@@ -137,6 +139,15 @@ final class CameraManager: NSObject, ObservableObject {
                 self?.isRunning = false
             }
         }
+    }
+
+    // MARK: - Video Effects
+
+    private func enableVideoEffects() {
+        if AVCaptureDevice.centerStageControlMode == .user {
+            AVCaptureDevice.centerStageControlMode = .cooperative
+        }
+        AVCaptureDevice.isCenterStageEnabled = true
     }
 
     // MARK: - Errors
