@@ -522,6 +522,7 @@ private struct BehaviorSettingsView: View {
     @AppStorage(FGConstants.lockOnSleepKey) private var lockOnSleep = false
     @State private var sessionTimeoutMinutes: Double = FGConstants.defaultSessionTimeout / 60
     @State private var uninstallProtection = UserDefaults.standard.bool(forKey: FGConstants.uninstallProtectionKey)
+    @State private var isUpdatingUninstallProtection = false
 
     @AppStorage("emergencyKillModifier") private var emergencyKillModifier = "Command"
     @AppStorage("emergencyKillKey") private var emergencyKillKey = "`"
@@ -903,6 +904,9 @@ private struct BehaviorSettingsView: View {
     }
 
     private func setUninstallProtection(_ enabled: Bool) {
+        guard !isUpdatingUninstallProtection else { return }
+        isUpdatingUninstallProtection = true
+        
         let bundlePath = Bundle.main.bundlePath
         let escapedPath = bundlePath.replacingOccurrences(of: "'", with: "'\\''")
         
@@ -929,6 +933,10 @@ private struct BehaviorSettingsView: View {
                 } else {
                     UserDefaults.standard.set(enabled, forKey: FGConstants.uninstallProtectionKey)
                     self.uninstallProtection = enabled
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.isUpdatingUninstallProtection = false
                 }
             }
         }
