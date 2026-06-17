@@ -54,12 +54,23 @@ struct FaceEnrollmentView: View {
             .padding(.bottom, 4)
 
             // Warning message (above the video screen)
-            Text(enrollmentManager.warningMessage)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.red.opacity(0.8))
-                .multilineTextAlignment(.center)
-                .frame(height: 20)
-                .padding(.bottom, 6)
+            VStack(spacing: 2) {
+                Text(enrollmentManager.warningMessage)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.red.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .frame(height: 20)
+
+                if enrollmentManager.warningMessage.contains("Poor lighting") {
+                    Text("Tip: Try turning on Edge Lighting to improve face recognition")
+                        .font(.system(size: 10, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+            .animation(.easeInOut(duration: 0.25), value: enrollmentManager.warningMessage)
+            .padding(.bottom, 6)
 
             // Camera preview with face guide.
             ZStack {

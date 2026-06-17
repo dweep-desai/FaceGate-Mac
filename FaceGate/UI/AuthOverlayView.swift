@@ -78,12 +78,23 @@ struct AuthOverlayView: View {
                 }
 
                 // Warning message (above the video screen)
-                Text(faceAuthManager.warningMessage)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.red.opacity(0.8))
-                    .multilineTextAlignment(.center)
-                    .frame(height: 20)
-                    .padding(.bottom, 8)
+                VStack(spacing: 2) {
+                    Text(faceAuthManager.warningMessage)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.red.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .frame(height: 20)
+
+                    if faceAuthManager.warningMessage.contains("Poor lighting") {
+                        Text("Tip: Try turning on Edge Lighting to improve face recognition")
+                            .font(.system(size: 10, weight: .regular))
+                            .foregroundColor(.white.opacity(0.45))
+                            .multilineTextAlignment(.center)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+                .animation(.easeInOut(duration: 0.25), value: faceAuthManager.warningMessage)
+                .padding(.bottom, 8)
 
                 // Face Unlock camera preview (if available and enabled).
                 if authManager.isFaceUnlockAvailable && !showFallbacks && !showPasswordField && !isTimedOut {
