@@ -131,6 +131,7 @@ struct FaceEnrollmentView: View {
             checkCameraAndStart()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            guard enrollmentManager.state == .idle else { return }
             checkCameraAndStart()
         }
     }

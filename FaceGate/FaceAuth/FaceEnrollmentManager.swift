@@ -72,6 +72,7 @@ final class FaceEnrollmentManager: ObservableObject {
 
     /// Start the enrollment process: activate camera and begin capturing face frames.
     func startEnrollment() {
+        guard state != .success else { return }
         collectedEmbeddings = []
         totalQuality = 0
         capturedCount = 0
