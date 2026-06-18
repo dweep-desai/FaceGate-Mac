@@ -50,7 +50,7 @@ All controls in your hands - 100% free & open source , 100% malware free , 100% 
 
 ---
 
-## Installation
+## Installation - Give the repo a ⭐️ so you don't miss future updates.
 
 ### Automated Install (Highly Recommended)
 
@@ -58,7 +58,7 @@ All controls in your hands - 100% free & open source , 100% malware free , 100% 
 curl -fsSL https://raw.githubusercontent.com/dweep-desai/FaceGate-Mac/main/install.sh | bash
 ```
 
-### Homebrew Cask
+### Homebrew Cask (Also Recommended)
 
 Install FaceGate via Homebrew Cask. To bypass the unnotarized app warning on macOS, use the `--no-quarantine` flag:
 
