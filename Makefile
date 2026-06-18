@@ -50,17 +50,23 @@ export: archive
 
 # Create DMG installer
 dmg: export
-	@echo "→ Creating DMG..."
+	@echo "→ Creating styled DMG..."
 	@rm -f $(DMG_PATH)
 	@mkdir -p $(BUILD_DIR)/dmg_staging
 	@cp -R $(APP_PATH) $(BUILD_DIR)/dmg_staging/
-	@ln -sf /Applications $(BUILD_DIR)/dmg_staging/Applications
-	hdiutil create -volname "$(APP_NAME)" \
-		-srcfolder $(BUILD_DIR)/dmg_staging \
-		-ov -format UDZO \
-		$(DMG_PATH)
+	create-dmg \
+		--volname "$(APP_NAME)" \
+		--background "non-app-assets/dmg_background.png" \
+		--window-pos 200 120 \
+		--window-size 660 400 \
+		--icon-size 100 \
+		--icon "$(APP_NAME).app" 180 210 \
+		--hide-extension "$(APP_NAME).app" \
+		--app-drop-link 480 210 \
+		"$(DMG_PATH)" \
+		"$(BUILD_DIR)/dmg_staging/"
 	@rm -rf $(BUILD_DIR)/dmg_staging
-	@echo "✓ DMG created at $(DMG_PATH)"
+	@echo "✓ Styled DMG created at $(DMG_PATH)"
 
 # Install locally (for development)
 install: build
