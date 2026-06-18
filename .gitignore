@@ -62,3 +62,4 @@ releases/sparkle_private_raw.key
 # macOS / Xcode Specific Overrides
 *.moved-aside
 .Trashes
+FaceGate-1.0.0.dmg
