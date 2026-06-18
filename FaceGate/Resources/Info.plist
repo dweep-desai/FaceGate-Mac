@@ -28,5 +28,13 @@
     <string>Copyright © 2026 Dweep Desai. MIT License.</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/dweep-desai/FaceGate-Mac/main/releases/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>RjPVy+qKDGbyImKAHkH6IczR7w2Hrw9hxqGGiwFNnbc=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
 </dict>
 </plist>

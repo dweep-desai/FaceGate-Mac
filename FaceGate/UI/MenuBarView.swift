@@ -1,4 +1,5 @@
 import SwiftUI
+import Sparkle
 
 /// The menu bar popover/dropdown content view.
 /// Shows locked apps, quick controls, and access to settings.
@@ -101,6 +102,16 @@ struct MenuBarView: View {
                     icon: "lock.fill",
                     title: "Re-lock All Apps",
                     action: relockAllApps
+                )
+
+                Divider()
+                    .padding(.vertical, 2)
+
+                // Check for Updates.
+                MenuButton(
+                    icon: "arrow.down.circle",
+                    title: "Check for Updates…",
+                    action: checkForUpdates
                 )
 
                 Divider()
@@ -219,6 +230,10 @@ struct MenuBarView: View {
         } else {
             isTemporarilyDisabled = false
         }
+    }
+
+    private func checkForUpdates() {
+        AppDelegate.shared?.updaterController?.updater.checkForUpdates()
     }
 
     private func openSettings() {

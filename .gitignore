@@ -37,6 +37,13 @@ venv/
 .venv/
 env/
 
+# Sparkle private key — never commit
+releases/sparkle_private.pem
+releases/sparkle_private_raw.key
+
+# Built DMG — too large for git, distribute via GitHub Releases
+*.dmg
+
 # Certificates and Provisioning Profiles
 *.mobileprovision
 *.provisionprofile

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Sparkle
 
 /// AppDelegate for AppKit bridging — handles lifecycle events that SwiftUI can't.
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -14,8 +15,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var setupWindow: NSWindow?
     private var settingsChromeState: SettingsChromeState?
     private var settingsSidebarToggleTarget: SettingsSidebarToggleTarget?
+    private(set) var updaterController: SPUStandardUpdaterController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Initialize Sparkle updater for automatic updates.
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
+
         // Pre-load the Core ML face embedding model to avoid cold-start delay.
         // The ANE compilation happens at load time (~200-500ms) — pay this cost now.
         FaceEmbedder.shared.loadModel()

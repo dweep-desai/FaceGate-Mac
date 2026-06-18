@@ -7,6 +7,11 @@ options:
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    version: 2.9.3
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -20,6 +25,7 @@ settings:
     INFOPLIST_FILE: FaceGate/Resources/Info.plist
     CODE_SIGN_ENTITLEMENTS: FaceGate.entitlements
     PRODUCT_NAME: FaceGate
+    GENERATE_INFOPLIST_FILE: NO
 
 targets:
   FaceGate:
@@ -29,6 +35,8 @@ targets:
       - path: FaceGate
         excludes:
           - "**/README.md"
+    dependencies:
+      - package: Sparkle
     resources:
       - path: FaceGate/Resources/Assets.xcassets
     settings:

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>FaceGate Changelog</title>
+    <description>Most recent changes to FaceGate.</description>
+    <language>en</language>
+    <item>
+      <title>Version 1.0.0</title>
+      <description><![CDATA[
+        <ul>
+          <li>Initial release</li>
+          <li>App locking with face recognition</li>
+          <li>Touch ID and password fallback</li>
+          <li>Liveness detection</li>
+          <li>Session timers and lock-on-sleep</li>
+        </ul>
+      ]]></description>
+      <pubDate>Thu, 18 Jun 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://github.com/dweep-desai/FaceGate-Mac/releases/download/v1.0.0/FaceGate-1.0.0.dmg"
+        sparkle:version="1"
+        sparkle:shortVersionString="1.0.0"
+        sparkle:edDSASignature="kEI8u6RzdJ2kRZWQzdyi9h7kKYvf0kC1QgHrVNzk0fl5Fv9k2uWLf9UjfD5d1H/l0txZbytkCnlrxYdw7eBeBA=="
+        length="10117559"
+        type="application/octet-stream" />
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+    </item>
+  </channel>
+</rss>

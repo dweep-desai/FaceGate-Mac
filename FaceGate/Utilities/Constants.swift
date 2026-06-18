@@ -155,4 +155,9 @@ enum FGConstants {
 
     /// App display name.
     static let appName = "FaceGate"
+
+    // MARK: - Sparkle
+
+    /// URL for the Sparkle appcast feed.
+    static let appcastURL = "https://raw.githubusercontent.com/dweep-desai/FaceGate-Mac/main/releases/appcast.xml"
 }

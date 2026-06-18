@@ -58,9 +58,9 @@ All controls in your hands - 100% free & open source , 100% malware free , 100% 
 curl -fsSL https://raw.githubusercontent.com/dweep-desai/FaceGate-Mac/main/install.sh | bash
 ```
 
-### Homebrew Cask (Also Recommended)
+### Homebrew (Also Recommended)
 
-Install FaceGate via Homebrew Cask. To bypass the unnotarized app warning on macOS, use the `--no-quarantine` flag:
+Install FaceGate via Homebrew tap.
 
 ```bash
 brew install --cask --no-quarantine dweep-desai/tap/facegate
