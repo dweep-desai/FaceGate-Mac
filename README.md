@@ -1,89 +1,122 @@
-# FaceGate
+<p align="center">
+  <img src="non-app-assets/logos/square_icon.png" width="128" alt="FaceGate Logo"/>
+</p>
 
-FaceGate is a native, open-source macOS utility that introduces application-level locking backed by on-device face recognition. It intercepts application launches and requires authentication—via face recognition, Touch ID, or a secure fallback password—before granting access.
+<h1 align="center">FaceGate</h1>
+<p align="center"><em>Application-level locking with on-device face recognition for macOS. Stronger than any other Mac app-locker.</em></p>
 
-macOS natively lacks the ability to restrict individual applications. FaceGate bridges this gap, offering a frictionless authentication layer for sensitive apps like Mail, Messages, or password managers.
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-000000?style=flat-square" alt="Platform"/>
+  <img src="https://img.shields.io/badge/swift-5.9%2B-F5A623?style=flat-square" alt="Swift"/>
+  <img src="https://img.shields.io/github/license/dweep-desai/FaceGate-Mac?style=flat-square" alt="License"/>
+  <img src="https://img.shields.io/github/stars/dweep-desai/FaceGate-Mac?style=flat-square&color=F5A623" alt="Stars"/>
+  <img src="https://img.shields.io/github/v/release/dweep-desai/FaceGate-Mac?style=flat-square" alt="Release"/>
+  <img src="https://img.shields.io/github/downloads/dweep-desai/FaceGate-Mac/total?style=flat-square" alt="Downloads"/>
+  <img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fdweep-desai%2FFaceGate-Mac&count_bg=%2379C83D&title_bg=%23555555&title=views&edge_flat=true" alt="Views"/>
+</p>
 
-## Capabilities
+<p align="center">
+  <img src="non-app-assets/logos/banner.png" alt="FaceGate Banner" width="100%"/>
+</p>
 
-- **Application Locking**: Intercepts app launches in real-time, preventing access until authenticated.
-- **On-Device Face Recognition**: Uses a software-based face embedding pipeline that runs entirely on your Mac for privacy-preserving face matching.
-- **Fallback Authentication**: Seamless integration with Touch ID and a custom encrypted PIN as secure alternatives.
-- **Menu Bar Agent**: Runs quietly in the background without cluttering the Dock.
-- **Zero Telemetry**: Fully offline. Face data is mathematically embedded, encrypted, and never leaves your device.
+---
 
-## Security Architecture & Threat Model
+FaceGate is a native macOS utility that brings app-level locking with FaceUnlock to your Mac. Lock sensitive applications behind FaceUnlock, Touch ID, or a secure password — all processed entirely on-device with zero telemetry.
 
-**Disclaimer**: FaceGate uses the built-in 2D FaceTime camera. It is not equivalent to Apple's Face ID and lacks depth-sensing hardware. It is designed as a convenience layer against casual physical access, not to thwart targeted attacks using high-fidelity spoofing.
+macOS natively lacks the ability to restrict individual applications. Although other App-lockers exist, none of them use face recognition and are not as feature rich as FaceGate. 
 
-For maximum security, rely on the Touch ID or password fallbacks.
+All controls in your hands - 100% free & open source , 100% malware free , 100% local . 
 
-- **Face Embeddings**: FaceGate does not store images. It extracts a 128-dimensional embedding vector from cropped face images, which is AES-256 encrypted and stored in the local filesystem.
-- **App Interception**: The daemon monitors `NSWorkspace` for process execution. When a locked app is launched, FaceGate immediately suppresses its window and overlays an un-dismissible, high-level `NSPanel` for authentication.
-- **Local Authentication**: Touch ID integration uses standard `LocalAuthentication` frameworks, while the fallback password utilizes salted SHA-256 hashes stored in the macOS Keychain.
+---
 
-## Technical Foundation
+## Features
 
-- **Language**: Swift 5.9+
-- **UI**: SwiftUI & AppKit
-- **Face Recognition**: Built-in software embedder (128-dim vectors) with optional Core ML upgrade path (MobileFaceNet on ANE)
-- **Computer Vision**: Apple Vision Framework (`VNDetectFaceRectanglesRequest`, `VNDetectFaceCaptureQualityRequest`)
-- **Media**: AVFoundation for real-time sample buffer processing
-- **Security**: CryptoKit (AES-256-GCM), macOS Keychain, Accelerate (vDSP)
+- **App Locking** — Lock any installed app. FaceGate intercepts launches in real-time and prevents access until authenticated.
+- **On-Device Face Recognition** — Software-based face embedding pipeline running entirely on your Mac via the Apple Neural Engine. No cloud, no data leaving your device.
+- **Liveness Detection** — Head-pose challenges (turn left, turn right, tilt) to prevent photo and video spoofing.
+- **Touch ID** — Seamless integration with macOS Touch ID.
+- **Password** — Encrypted PIN stored in the macOS Keychain.
+- **Per-App Session Timers** — Customizable unlock duration per app, including "Keep Unlocked Indefinitely." and "Lock immediately"
+- **Lock-on-Sleep** — Automatically lock all apps when your Mac sleeps or the screen locks.
+- **Uninstall Protection** — Prevents casual deletion by making the app bundle immutable and requires Admin Privileges to uninstall.
+- **Scheduled App-Lock/Unlock** — Time-based auto-lock and auto-unlock windows.
+- **FaceUnlock Schedule** — Disable face recognition during specific hours (e.g., when dark or in public spaces) to automatically fallback to Touch ID/Password.
+- **Auto-Optimization** — Automatically boost display brightness and trigger Center Stage to improve camera visibility and face detection accuracy.
+- **Customizable Sensitivity** — Fine-tune face recognition similarity thresholds to balance convenience and security.
+- **Menu Bar Control** — Monitor locked/unlocked apps and lock them directly from the menu bar popup.
+- **Secure Operations** — Require authentication to quit the application or configure settings to prevent unauthorized tampering.
+- **Emergency Kill Hotkey** — Global keyboard shortcut to instantly terminate.
+- **Menu Bar Agent** — Runs silently in the menu bar — no Dock icon, no distractions.
+
+---
 
 ## Installation
 
-### Automated Install (Recommended)
-
-You can download and install the latest compiled release automatically. This script downloads the binary and strips the quarantine attribute to bypass Gatekeeper's unnotarized warnings seamlessly.
+### Automated Install (Highly Recommended)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dweep-desai/FaceGate-Mac/main/install.sh | bash
 ```
 
+### Homebrew Cask
+
+Install FaceGate via Homebrew Cask. To bypass the unnotarized app warning on macOS, use the `--no-quarantine` flag:
+
+```bash
+brew install --cask --no-quarantine dweep-desai/tap/facegate
+```
+
 ### Manual Install
+
+> [!IMPORTANT]
+> FaceGate is not Apple-notarized (due to a lack of developer funds), so simply double-clicking the installed application for the first launch will not open it. You must follow the exact instructions detailed below or follow the installation video guide.
 
 1. Download the latest `.dmg` from the [Releases](https://github.com/dweep-desai/FaceGate-Mac/releases) page.
 2. Mount the volume and drag `FaceGate.app` to `/Applications`.
-3. To open for the first time, right-click `FaceGate.app`, select **Open**, and acknowledge the Gatekeeper warning.
-
-## Local Development
-
-FaceGate is built using XcodeGen to maintain a clean Git history and reproducible project files.
-
-### Prerequisites
-
-- macOS 13.0 (Ventura) or later
-- Xcode 15+
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
-
-### Build Instructions
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/dweep-desai/FaceGate-Mac.git
-   cd FaceGate-Mac
-   ```
-2. Generate the Xcode project:
-   ```bash
-   xcodegen generate
-   ```
-3. Open `FaceGate.xcodeproj` and build the target using `Cmd+B` or run with `Cmd+R`.
-
-*Note: You may need to update the signing configuration in Xcode to use your personal developer team.*
-
-### Creating a DMG for Distribution
-
-```bash
-make dmg
-```
-
-This generates, archives, and packages the app into `build/FaceGate.dmg` — ready for end users.
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+3. Right-click `FaceGate.app`, select **Open**, and acknowledge the Gatekeeper warning.
 
 ---
 
-*Authored by Dweep Desai*
+## Security & Privacy
+
+FaceGate is designed as a **convenience layer against casual physical access**, not a defense against targeted attacks using high-fidelity spoofing. The built-in 2D FaceTime camera lacks depth sensing.
+
+- Face embeddings are AES-256-GCM encrypted and stored locally.
+- Encryption keys are held in the macOS Keychain.
+- The password uses SHA-256 with a random 32-byte salt, stored in the Keychain.
+- **Zero telemetry.** The app is fully offline and makes no network requests.
+- Face unlock sensitivity is configurable (default similarity threshold: 0.65).
+
+---
+
+## Requirements
+
+- macOS 14.0 (Sonoma) or later
+- A Mac with a built-in or external camera (for face unlock)
+- Touch ID-compatible Mac (optional, for Touch ID fallback)
+
+---
+
+## Building from Source
+
+```bash
+git clone https://github.com/dweep-desai/FaceGate-Mac.git
+cd FaceGate-Mac
+brew install xcodegen
+xcodegen generate
+open FaceGate.xcodeproj
+```
+
+Build with `Cmd+B` or `Cmd+R`. You may need to update the signing configuration for your development team.
+
+See [developer.md](developer.md) for the complete technical architecture and contribution guide.
+
+---
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
+
+---
+
+<p align="center"><em>Authored by Dweep Desai</em></p>
