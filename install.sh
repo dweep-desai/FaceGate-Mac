@@ -46,7 +46,7 @@ echo -e "${GREEN}✓${NC} macOS ${macos_version} detected"
 # Check if FaceGate is already installed.
 if [ -d "${INSTALL_DIR}/${APP_NAME}.app" ]; then
     echo -e "${YELLOW}⚠ FaceGate is already installed at ${INSTALL_DIR}/${APP_NAME}.app${NC}"
-    read -p "  Overwrite? (y/N) " -n 1 -r
+    read -p "  Overwrite? (y/N) " -n 1 -r < /dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo "Installation cancelled."
@@ -150,7 +150,7 @@ echo -e "  Location: ${INSTALL_DIR}/${APP_NAME}.app"
 echo ""
 
 # Offer to open the app.
-read -p "  Open FaceGate now? (Y/n) " -n 1 -r
+read -p "  Open FaceGate now? (Y/n) " -n 1 -r < /dev/tty
 echo
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     open "${INSTALL_DIR}/${APP_NAME}.app"

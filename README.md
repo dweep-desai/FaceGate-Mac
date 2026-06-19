@@ -52,34 +52,36 @@ All controls in your hands - 100% free & open source , 100% malware free , 100% 
 
 ## Installation - Give the repo a ⭐️ so you don't miss future updates.
 
-### -Recommended: Homebrew
-
-```bash
-brew install --cask --no-quarantine dweep-desai/tap/facegate
-```
-
-`--no-quarantine` is required because FaceGate is not Apple-notarized (due to a lack of developer funds). This flag prevents Gatekeeper from blocking the app on first launch.
-
-### -Or download & install automatically
+### -Recommended: Automatic Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dweep-desai/FaceGate-Mac/main/install.sh | bash
 ```
 
-The script fetches the latest DMG from GitHub Releases, installs it to `/Applications`, and removes the quarantine flag.
+The script automatically fetches the latest release from GitHub, installs FaceGate to your `/Applications` folder, and removes the Gatekeeper quarantine flag so it can run immediately.
 
-### -Manual Install
+### -Or Manual Install
 
 > [!IMPORTANT]
-> FaceGate is not Apple-notarized, so simply double-clicking the app will not open it. Follow the steps below.
+> FaceGate is not Apple-notarized, so simply double-clicking the manually downloaded app will not work. Follow the steps below:
 
 1. Download the latest `.dmg` from the [Releases](https://github.com/dweep-desai/FaceGate-Mac/releases) page.
-2. Mount the volume and drag `FaceGate.app` to `/Applications`.
-3. Open Terminal and run:
+2. Mount the DMG volume and drag `FaceGate.app` to your `/Applications` folder.
+3. Open Terminal and remove the quarantine attribute by running:
    ```bash
    xattr -cr /Applications/FaceGate.app
    ```
-4. Right-click `FaceGate.app`, select **Open**, and acknowledge the Gatekeeper warning.
+4. You can now launch FaceGate normally!
+
+### -Or Homebrew
+
+```bash
+brew install --cask dweep-desai/tap/facegate
+```
+
+> ```bash
+> xattr -cr /Applications/FaceGate.app
+> ```
 <br>
 
 ## Security & Privacy
