@@ -8,11 +8,11 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-000000?style=flat-square" alt="Platform"/>
   <img src="https://img.shields.io/badge/swift-5.9%2B-F5A623?style=flat-square" alt="Swift"/>
-  <img src="https://img.shields.io/github/license/dweep-desai/FaceGate-Mac?style=flat-square" alt="License"/>
-  <img src="https://img.shields.io/github/stars/dweep-desai/FaceGate-Mac?style=flat-square&color=F5A623" alt="Stars"/>
-  <img src="https://img.shields.io/github/v/release/dweep-desai/FaceGate-Mac?style=flat-square" alt="Release"/>
-  <img src="https://img.shields.io/github/downloads/dweep-desai/FaceGate-Mac/total?style=flat-square" alt="Downloads"/>
-  <img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fdweep-desai%2FFaceGate-Mac&count_bg=%2379C83D&title_bg=%23555555&title=views&edge_flat=true" alt="Views"/>
+  <img src="https://badgen.net/github/license/dweep-desai/FaceGate-Mac" alt="License"/>
+  <img src="https://badgen.net/github/stars/dweep-desai/FaceGate-Mac?color=f5a623" alt="Stars"/>
+  <img src="https://badgen.net/github/release/dweep-desai/FaceGate-Mac" alt="Release"/>
+  <img src="https://badgen.net/github/assets-dl/dweep-desai/FaceGate-Mac" alt="Downloads"/>
+  <img src="https://hits.dwyl.com/dweep-desai/FaceGate-Mac.svg" alt="Views"/>
 </p>
 
 <p align="center">
