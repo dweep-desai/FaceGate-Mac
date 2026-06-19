@@ -19,15 +19,14 @@
   <img src="non-app-assets/logos/banner.png" alt="FaceGate Banner" width="100%"/>
 </p>
 
----
 
 FaceGate is a native macOS utility that brings app-level locking with FaceUnlock to your Mac. Lock sensitive applications behind FaceUnlock, Touch ID, or a secure password — all processed entirely on-device with zero telemetry.
 
 macOS natively lacks the ability to restrict individual applications. Although other App-lockers exist, none of them use face recognition and are not as feature rich as FaceGate. 
 
 All controls in your hands - 100% free & open source , 100% malware free , 100% local . 
-
----
+<br>
+<br>
 
 ## Features
 
@@ -48,11 +47,12 @@ All controls in your hands - 100% free & open source , 100% malware free , 100% 
 - **Emergency Kill Hotkey** — Global keyboard shortcut to instantly terminate.
 - **Menu Bar Agent** — Runs silently in the menu bar — no Dock icon, no distractions.
 
----
+<br>
+
 
 ## Installation - Give the repo a ⭐️ so you don't miss future updates.
 
-### Recommended: Homebrew
+### -Recommended: Homebrew
 
 ```bash
 brew install --cask --no-quarantine dweep-desai/tap/facegate
@@ -60,18 +60,18 @@ brew install --cask --no-quarantine dweep-desai/tap/facegate
 
 `--no-quarantine` is required because FaceGate is not Apple-notarized (due to a lack of developer funds). This flag prevents Gatekeeper from blocking the app on first launch.
 
-### Or download & install automatically (handles quarantine too)
+### -Or download & install automatically
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dweep-desai/FaceGate-Mac/main/install.sh | bash
 ```
 
-The script fetches the latest DMG from GitHub Releases, installs it to `/Applications`, and removes the quarantine flag — no manual steps needed.
+The script fetches the latest DMG from GitHub Releases, installs it to `/Applications`, and removes the quarantine flag.
 
-### Manual Install
+### -Manual Install
 
 > [!IMPORTANT]
-> FaceGate is not Apple-notarized, so Gatekeeper will block it on first launch. Follow the steps below.
+> FaceGate is not Apple-notarized, so simply double-clicking the app will not open it. Follow the steps below.
 
 1. Download the latest `.dmg` from the [Releases](https://github.com/dweep-desai/FaceGate-Mac/releases) page.
 2. Mount the volume and drag `FaceGate.app` to `/Applications`.
@@ -79,9 +79,8 @@ The script fetches the latest DMG from GitHub Releases, installs it to `/Applica
    ```bash
    xattr -cr /Applications/FaceGate.app
    ```
-4. Right-click `FaceGate.app`, select **Open**, and click **Open** in the dialog.
-
----
+4. Right-click `FaceGate.app`, select **Open**, and acknowledge the Gatekeeper warning.
+<br>
 
 ## Security & Privacy
 
@@ -93,7 +92,7 @@ FaceGate is designed as a **convenience layer against casual physical access**, 
 - **Zero telemetry.** The app is fully offline and makes no network requests.
 - Face unlock sensitivity is configurable (default similarity threshold: 0.65).
 
----
+<br>
 
 ## Requirements
 
@@ -101,7 +100,7 @@ FaceGate is designed as a **convenience layer against casual physical access**, 
 - A Mac with a built-in or external camera (for face unlock)
 - Touch ID-compatible Mac (optional, for Touch ID fallback)
 
----
+<br>
 
 ## Building from Source
 
@@ -115,7 +114,7 @@ open FaceGate.xcodeproj
 
 Build with `Cmd+B` or `Cmd+R`. You may need to update the signing configuration for your development team.
 
-See [developer.md](developer.md) for the complete technical architecture and contribution guide.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete technical architecture and contribution guide.
 
 ---
 
@@ -126,3 +125,7 @@ MIT License. See [LICENSE](LICENSE).
 ---
 
 <p align="center"><em>Authored by Dweep Desai</em></p>
+
+
+
+
