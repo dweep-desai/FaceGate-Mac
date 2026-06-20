@@ -19,6 +19,12 @@
   <img src="non-app-assets/logos/banner.png" alt="FaceGate Banner" width="100%"/>
 </p>
 
+<p align="center">
+  <a href="https://facegate-applocker.vercel.app/" target="_blank" rel="noopener noreferrer">
+    <img src="non-app-assets/website.svg" alt="Website" height="13" />
+  </a>
+</p>
+
 
 FaceGate is a native macOS utility that brings app-level locking with FaceUnlock to your Mac. Lock sensitive applications behind FaceUnlock, Touch ID, or a secure password — all processed entirely on-device with zero telemetry.
 
