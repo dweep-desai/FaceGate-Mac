@@ -85,9 +85,9 @@ final class FaceAuthManager: ObservableObject {
         let currentComponents = calendar.dateComponents([.hour, .minute], from: now)
         guard let currentHour = currentComponents.hour, let currentMinute = currentComponents.minute else { return false }
         
-        let startHour = UserDefaults.standard.integer(forKey: FGConstants.faceUnlockDisabledStartHourKey)
+        let startHour = UserDefaults.standard.object(forKey: FGConstants.faceUnlockDisabledStartHourKey) != nil ? UserDefaults.standard.integer(forKey: FGConstants.faceUnlockDisabledStartHourKey) : 22
         let startMinute = UserDefaults.standard.integer(forKey: FGConstants.faceUnlockDisabledStartMinuteKey)
-        let endHour = UserDefaults.standard.integer(forKey: FGConstants.faceUnlockDisabledEndHourKey)
+        let endHour = UserDefaults.standard.object(forKey: FGConstants.faceUnlockDisabledEndHourKey) != nil ? UserDefaults.standard.integer(forKey: FGConstants.faceUnlockDisabledEndHourKey) : 7
         let endMinute = UserDefaults.standard.integer(forKey: FGConstants.faceUnlockDisabledEndMinuteKey)
         
         let currentTotalMinutes = currentHour * 60 + currentMinute
