@@ -17,8 +17,8 @@
         url="https://github.com/dweep-desai/FaceGate-Mac/releases/download/v1.0.1/FaceGate-1.0.1.dmg"
         sparkle:version="2"
         sparkle:shortVersionString="1.0.1"
-        sparkle:edSignature="j766R5qMkkS5qmONSe9pIYuLRTjKOtuc3E3Zfje6MHwNWgNnm18WnrZWvPS+hgN24iMdU3iltqshtYc+HWg5Dw=="
-        length="11027511"
+        sparkle:edSignature="GlrCU6U6j11Gq03+CvOBcRc5iKbnacSTeKAUzE3iE/G6ywnQyU/NfExV1+KzUzUHSXpAuUqH1smScQmTun1rCA=="
+        length="11027484"
         type="application/octet-stream" />
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
     </item>
