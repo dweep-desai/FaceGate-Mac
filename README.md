@@ -11,7 +11,7 @@
   <img src="https://badgen.net/github/license/dweep-desai/FaceGate-Mac" alt="License"/>
   <img src="https://img.shields.io/github/stars/dweep-desai/FaceGate-Mac?style=flat-square" alt="Stars"/>
   <img src="https://badgen.net/github/release/dweep-desai/FaceGate-Mac" alt="Release"/>
-  <img src="https://badgen.net/github/assets-dl/dweep-desai/FaceGate-Mac" alt="Downloads"/>
+  <img src="https://img.shields.io/github/downloads/dweep-desai/FaceGate-Mac/total?style=flat-square" alt="Downloads"/>
   <img src="https://komarev.com/ghpvc/?username=dweep-desai&amp;repo=FaceGate-Mac&amp;color=green&amp;label=views" alt="Views"/>
 </p>
 
