@@ -533,8 +533,39 @@ private struct BehaviorSettingsView: View {
     @AppStorage(FGConstants.faceUnlockDisabledEndHourKey) private var endHour = 7
     @AppStorage(FGConstants.faceUnlockDisabledEndMinuteKey) private var endMinute = 0
 
-    @State private var startTime = Date()
-    @State private var endTime = Date()
+    private var startTimeBinding: Binding<Date> {
+        Binding<Date>(
+            get: {
+                let calendar = Calendar.current
+                var comps = calendar.dateComponents([.year, .month, .day], from: Date())
+                comps.hour = startHour
+                comps.minute = startMinute
+                return calendar.date(from: comps) ?? Date()
+            },
+            set: { newValue in
+                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                startHour = comps.hour ?? 22
+                startMinute = comps.minute ?? 0
+            }
+        )
+    }
+
+    private var endTimeBinding: Binding<Date> {
+        Binding<Date>(
+            get: {
+                let calendar = Calendar.current
+                var comps = calendar.dateComponents([.year, .month, .day], from: Date())
+                comps.hour = endHour
+                comps.minute = endMinute
+                return calendar.date(from: comps) ?? Date()
+            },
+            set: { newValue in
+                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                endHour = comps.hour ?? 7
+                endMinute = comps.minute ?? 0
+            }
+        )
+    }
 
     // Lock all apps schedule
     @AppStorage(FGConstants.lockAllScheduleEnabledKey) private var lockScheduleEnabled = false
@@ -754,26 +785,25 @@ private struct BehaviorSettingsView: View {
 
             Section {
                 Toggle("Disable Face Unlock during certain hours", isOn: $disableFaceUnlockHours)
+                    .onChangeCompat(of: disableFaceUnlockHours) { newValue in
+                        if newValue {
+                            // Ensure start/end hours are written to UserDefaults immediately so that FaceAuthManager has them
+                            UserDefaults.standard.set(startHour, forKey: FGConstants.faceUnlockDisabledStartHourKey)
+                            UserDefaults.standard.set(startMinute, forKey: FGConstants.faceUnlockDisabledStartMinuteKey)
+                            UserDefaults.standard.set(endHour, forKey: FGConstants.faceUnlockDisabledEndHourKey)
+                            UserDefaults.standard.set(endMinute, forKey: FGConstants.faceUnlockDisabledEndMinuteKey)
+                        }
+                    }
                 
                 if disableFaceUnlockHours {
                     HStack {
-                        DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+                        DatePicker("Start Time", selection: startTimeBinding, displayedComponents: .hourAndMinute)
                             .datePickerStyle(.field)
-                            .onChangeCompat(of: startTime) { newValue in
-                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
-                                startHour = comps.hour ?? 22
-                                startMinute = comps.minute ?? 0
-                            }
                         
                         Spacer()
                         
-                        DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+                        DatePicker("End Time", selection: endTimeBinding, displayedComponents: .hourAndMinute)
                             .datePickerStyle(.field)
-                            .onChangeCompat(of: endTime) { newValue in
-                                let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
-                                endHour = comps.hour ?? 7
-                                endMinute = comps.minute ?? 0
-                            }
                     }
                     
                     Text("During these hours, App Lock remains active but face recognition is bypassed, forcing password/Touch ID entry.")
@@ -860,20 +890,7 @@ private struct BehaviorSettingsView: View {
             let calendar = Calendar.current
             let now = Date()
 
-            // Load face-unlock schedule dates
-            var startComponents = calendar.dateComponents([.year, .month, .day], from: now)
-            startComponents.hour = startHour
-            startComponents.minute = startMinute
-            if let startDate = calendar.date(from: startComponents) {
-                startTime = startDate
-            }
 
-            var endComponents = calendar.dateComponents([.year, .month, .day], from: now)
-            endComponents.hour = endHour
-            endComponents.minute = endMinute
-            if let endDate = calendar.date(from: endComponents) {
-                endTime = endDate
-            }
 
             // Load lock-all schedule dates
             var lockStartComponents = calendar.dateComponents([.year, .month, .day], from: now)
