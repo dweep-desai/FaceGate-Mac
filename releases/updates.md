@@ -81,7 +81,7 @@ The DMG is at `build/FaceGate.dmg`.
 
 This outputs a signature like:
 ```
-sparkle:edDSASignature="ABCDEF..."
+sparkle:edSignature="ABCDEF..."
 ```
 Save the signature text (everything after `sparkle:`).
 
@@ -119,7 +119,7 @@ Edit `releases/appcast.xml`. Add a new `<item>`:
         url="https://github.com/dweep-desai/FaceGate-Mac/releases/download/v1.1.0/FaceGate.dmg"
         sparkle:version="2"
         sparkle:shortVersionString="1.1.0"
-        sparkle:edDSASignature="ABCDEF..."
+        sparkle:edSignature="ABCDEF..."
         length="10000000"
         type="application/octet-stream" />
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
@@ -135,7 +135,7 @@ Key enclosure fields:
 | `url` | GitHub Release download URL |
 | `sparkle:version` | `CURRENT_PROJECT_VERSION` (build number) |
 | `sparkle:shortVersionString` | `MARKETING_VERSION` |
-| `sparkle:edDSASignature` | output from `sign_update` step |
+| `sparkle:edSignature` | output from `sign_update` step |
 | `length` | file size in bytes (`stat -f%z build/FaceGate.dmg`) |
 | `type` | `application/octet-stream` |
 

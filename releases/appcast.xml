@@ -17,7 +17,7 @@
         url="https://github.com/dweep-desai/FaceGate-Mac/releases/download/v1.0.1/FaceGate-1.0.1.dmg"
         sparkle:version="2"
         sparkle:shortVersionString="1.0.1"
-        sparkle:edDSASignature="j766R5qMkkS5qmONSe9pIYuLRTjKOtuc3E3Zfje6MHwNWgNnm18WnrZWvPS+hgN24iMdU3iltqshtYc+HWg5Dw=="
+        sparkle:edSignature="j766R5qMkkS5qmONSe9pIYuLRTjKOtuc3E3Zfje6MHwNWgNnm18WnrZWvPS+hgN24iMdU3iltqshtYc+HWg5Dw=="
         length="11027511"
         type="application/octet-stream" />
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
@@ -38,7 +38,7 @@
         url="https://github.com/dweep-desai/FaceGate-Mac/releases/download/v1.0.0/FaceGate-1.0.0.dmg"
         sparkle:version="1"
         sparkle:shortVersionString="1.0.0"
-        sparkle:edDSASignature="vy1k8XdoK1Io0AqA9k1vPkNHGyhD2gDTmxwOKVnr/CyXZ7WPU3W3Cz7wIeK+8E2mBzbqIJB+u3GUj1Zx6jKYBA=="
+        sparkle:edSignature="vy1k8XdoK1Io0AqA9k1vPkNHGyhD2gDTmxwOKVnr/CyXZ7WPU3W3Cz7wIeK+8E2mBzbqIJB+u3GUj1Zx6jKYBA=="
         length="11026815"
         type="application/octet-stream" />
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
