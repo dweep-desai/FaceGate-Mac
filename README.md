@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-000000?style=flat-square" alt="Platform"/>
   <img src="https://img.shields.io/badge/swift-5.9%2B-F5A623?style=flat-square" alt="Swift"/>
   <img src="https://badgen.net/github/license/dweep-desai/FaceGate-Mac" alt="License"/>
-  <img src="https://badgen.net/github/stars/dweep-desai/FaceGate-Mac?color=f5a623" alt="Stars"/>
+  <img src="https://img.shields.io/github/stars/dweep-desai/FaceGate-Mac?style=flat-square" alt="Stars"/>
   <img src="https://badgen.net/github/release/dweep-desai/FaceGate-Mac" alt="Release"/>
   <img src="https://badgen.net/github/assets-dl/dweep-desai/FaceGate-Mac" alt="Downloads"/>
   <img src="https://komarev.com/ghpvc/?username=dweep-desai&amp;repo=FaceGate-Mac&amp;color=green&amp;label=views" alt="Views"/>
