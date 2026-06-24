@@ -130,6 +130,14 @@ struct FaceEnrollmentView: View {
         .onAppear {
             checkCameraAndStart()
         }
+        .onDisappear {
+            // If the window is closed before enrollment finishes (e.g. user clicks
+            // the close button mid-capture), cancel enrollment so the camera stops
+            // and display brightness is restored to its original value.
+            if enrollmentManager.state == .capturing || enrollmentManager.state == .processing {
+                enrollmentManager.cancelEnrollment()
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             guard enrollmentManager.state == .idle else { return }
             checkCameraAndStart()

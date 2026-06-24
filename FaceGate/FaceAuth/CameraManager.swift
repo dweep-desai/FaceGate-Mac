@@ -194,11 +194,19 @@ final class CameraManager: NSObject, ObservableObject {
     func stopCapture() {
         guard captureSession.isRunning else { return }
 
+        // Capture brightness value before the async block so it survives even if
+        // `self` is deallocated before the block executes (the previous [weak self]
+        // pattern silently dropped the restore when the object was released).
+        let brightnessToRestore = savedBrightness
+        savedBrightness = nil
+
         processingQueue.async { [weak self] in
             self?.captureSession.stopRunning()
             DispatchQueue.main.async {
                 self?.isRunning = false
-                self?.restoreBrightness()
+                if let brightness = brightnessToRestore {
+                    CameraManager.setBrightness(brightness)
+                }
             }
         }
     }
@@ -243,14 +251,30 @@ final class CameraManager: NSObject, ObservableObject {
     private func restoreBrightness() {
         guard let saved = savedBrightness else { return }
         savedBrightness = nil
+        CameraManager.setBrightness(saved)
+    }
 
+    /// Sets display brightness to the given value. Static so it can be called from
+    /// contexts where the CameraManager instance may already be deallocated.
+    fileprivate static func setBrightness(_ value: Float) {
         guard let handle = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_NOW) else { return }
         defer { dlclose(handle) }
 
         guard let setSym = dlsym(handle, "DisplayServicesSetBrightness") else { return }
         let setBrightness = unsafeBitCast(setSym, to: DSSetBrightness.self)
 
-        _ = setBrightness(CGMainDisplayID(), saved)
+        _ = setBrightness(CGMainDisplayID(), value)
+    }
+
+    deinit {
+        // Safety net: if the camera manager is deallocated without stopCapture() being
+        // called (e.g. window closed mid-enrollment), restore the original brightness.
+        if let saved = savedBrightness {
+            let brightness = saved
+            DispatchQueue.main.async {
+                CameraManager.setBrightness(brightness)
+            }
+        }
     }
 
     // MARK: - Errors
