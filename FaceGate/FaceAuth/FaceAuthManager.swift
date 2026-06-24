@@ -149,8 +149,11 @@ final class FaceAuthManager: ObservableObject {
     func stopAuthentication() {
         timeoutWorkItem?.cancel()
         timeoutWorkItem = nil
-        cameraManager.stopCapture()
+        // Nil the callback BEFORE stopping capture so that any frames already
+        // queued in the camera pipeline are dropped rather than dispatched into
+        // processAuthFrame on a session that is being torn down.
         cameraManager.onFrameCaptured = nil
+        cameraManager.stopCapture()
         state = .idle
         statusMessage = ""
         warningMessage = ""
@@ -247,8 +250,8 @@ final class FaceAuthManager: ObservableObject {
                     self.timeoutWorkItem = nil
                     self.state = .matched
                     self.statusMessage = "Liveness verified!"
-                    self.cameraManager.stopCapture()
                     self.cameraManager.onFrameCaptured = nil
+                    self.cameraManager.stopCapture()
                     self.onResult?(true)
                     self.onResult = nil
                 }
