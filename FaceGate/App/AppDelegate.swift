@@ -181,7 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.isMovableByWindowBackground = true
             window.minSize = NSSize(width: 850, height: 620)
             window.contentView = NSHostingView(rootView: settingsView)
-            window.level = .floating
+            window.level = .normal
             installSettingsSidebarToggle(on: window, chromeState: chromeState)
             window.center()
             window.isReleasedWhenClosed = false
@@ -255,7 +255,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         window.title = "FaceGate Setup"
-        window.level = .floating
+        window.level = .normal
         window.contentView = NSHostingView(rootView: setupView)
         window.center()
         window.isReleasedWhenClosed = false
