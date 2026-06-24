@@ -334,6 +334,13 @@ private struct AuthSettingsView: View {
 
             // MARK: Touch ID Section
             Section {
+                // Camera picker (visible only when multiple cameras are available).
+                CameraPickerView()
+            } header: {
+                Text("Camera")
+            }
+
+            Section {
                 Toggle(isOn: $touchIDEnabled) {
                     HStack {
                         Image(systemName: "touchid")
@@ -1706,5 +1713,55 @@ private struct LockedAppDetailView: View {
         }
         // Revoke existing session so the new timeout takes effect immediately.
         SessionManager.shared.revokeSession(for: app.bundleIdentifier)
+    }
+}
+
+// MARK: - Camera Picker
+
+private struct CameraPickerView: View {
+    @ObservedObject private var cameraManager = AuthenticationManager.shared.faceAuthManager.cameraManager
+    @State private var selectedID: String = ""
+
+    var body: some View {
+        Picker(selection: $selectedID) {
+            ForEach(cameraManager.availableCameras, id: \.uniqueID) { camera in
+                HStack {
+                    Image(systemName: camera.deviceType == .external ? "web.camera.fill" : "camera.fill")
+                        .foregroundColor(.secondary)
+                    Text(camera.localizedName)
+                }
+                .tag(camera.uniqueID)
+            }
+        } label: {
+            HStack {
+                Image(systemName: "video.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.blue)
+                VStack(alignment: .leading) {
+                    Text("Camera")
+                        .font(.system(size: 13, weight: .medium))
+                    Text(selectedCameraLabel)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .disabled(cameraManager.availableCameras.count <= 1)
+        .onAppear {
+            cameraManager.refreshAvailableCameras()
+            if selectedID.isEmpty {
+                selectedID = cameraManager.selectedCameraID ?? cameraManager.availableCameras.first?.uniqueID ?? ""
+            }
+        }
+        .onChangeCompat(of: selectedID) { newValue in
+            cameraManager.selectedCameraID = newValue
+        }
+    }
+
+    private var selectedCameraLabel: String {
+        if let cam = cameraManager.availableCameras.first(where: { $0.uniqueID == selectedID }) {
+            return cam.localizedName
+        }
+        return cameraManager.availableCameras.first?.localizedName ?? "No camera found"
     }
 }

@@ -14,11 +14,20 @@ final class CameraManager: NSObject, ObservableObject {
     @Published var permissionGranted: Bool = false
     @Published var error: CameraError?
 
+    /// All available video cameras.
+    @Published private(set) var availableCameras: [AVCaptureDevice] = []
+
     /// Callback invoked on each captured video frame.
     var onFrameCaptured: ((CVPixelBuffer) -> Void)?
 
     private let videoOutput = AVCaptureVideoDataOutput()
     private let processingQueue = DispatchQueue(label: "com.facegate.camera", qos: .userInitiated)
+
+    /// Unique ID of the user's preferred camera, persisted across launches.
+    var selectedCameraID: String? {
+        get { UserDefaults.standard.string(forKey: "selectedCameraID") }
+        set { UserDefaults.standard.set(newValue, forKey: "selectedCameraID") }
+    }
 
     /// Brightness level captured just before the camera turns on, restored when it stops.
     private var savedBrightness: Float? = nil
@@ -67,6 +76,33 @@ final class CameraManager: NSObject, ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
+    // MARK: - Camera Discovery
+
+    /// Refreshes the list of available video cameras.
+    func refreshAvailableCameras() {
+        var cameras = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera, .external],
+            mediaType: .video,
+            position: .unspecified
+        ).devices
+
+        // Sort: external first, then built-in.
+        cameras.sort { $0.deviceType == .external && $1.deviceType != .external }
+        availableCameras = cameras
+    }
+
+    /// Returns the camera that should be used, respecting the user's preference.
+    private func resolveCamera() -> AVCaptureDevice? {
+        refreshAvailableCameras()
+        if let preferredID = selectedCameraID,
+           let match = availableCameras.first(where: { $0.uniqueID == preferredID }) {
+            return match
+        }
+        // Fall back to external, then built-in.
+        return availableCameras.first(where: { $0.deviceType == .external })
+            ?? availableCameras.first
+    }
+
     // MARK: - Session Setup
 
     func configureSession() {
@@ -87,14 +123,15 @@ final class CameraManager: NSObject, ObservableObject {
             captureSession.sessionPreset = .medium
         }
 
-        // Input: front-facing camera.
-        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) else {
+        guard let camera = resolveCamera() else {
             error = .cameraUnavailable
             captureSession.commitConfiguration()
             return
         }
 
-        enableVideoEffects()
+        if camera.position == .front {
+            enableVideoEffects()
+        }
 
         do {
             let input = try AVCaptureDeviceInput(device: camera)
@@ -124,7 +161,7 @@ final class CameraManager: NSObject, ObservableObject {
         }
         captureSession.addOutput(videoOutput)
 
-        // Mirror the front camera so it looks natural.
+        // Mirror the camera so it looks natural (like a mirror selfie).
         if let connection = videoOutput.connection(with: .video) {
             connection.isVideoMirrored = true
         }
@@ -228,7 +265,7 @@ final class CameraManager: NSObject, ObservableObject {
             case .permissionDenied:
                 return "Camera access was denied. Please grant camera permission in System Settings."
             case .cameraUnavailable:
-                return "No front-facing camera was found on this Mac."
+                return "No camera was found on this Mac. Connect an external webcam."
             case .configurationFailed:
                 return "Failed to configure the camera capture session."
             }
