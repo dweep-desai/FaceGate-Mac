@@ -138,16 +138,6 @@ final class AppScheduleManager: ObservableObject {
             applyUnlockSchedule()
         }
 
-        if wasInLockWindow && !inLockWindow {
-            userOverrides.removeAll()
-            saveOverrides()
-        }
-
-        if wasInUnlockWindow && !inUnlockWindow {
-            userOverrides.removeAll()
-            saveOverrides()
-        }
-
         wasInLockWindow = inLockWindow
         wasInUnlockWindow = inUnlockWindow && !inLockWindow
     }
