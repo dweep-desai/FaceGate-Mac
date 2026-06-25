@@ -76,6 +76,7 @@ final class CameraManager: NSObject, ObservableObject {
         case .authorized:
             permissionGranted = true
             error = nil
+            startCapture()
         case .notDetermined:
             error = nil
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in

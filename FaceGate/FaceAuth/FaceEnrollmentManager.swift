@@ -82,7 +82,7 @@ final class FaceEnrollmentManager: ObservableObject {
             self?.processEnrollmentFrame(pixelBuffer)
         }
 
-        cameraManager.startCapture()
+        cameraManager.checkPermission()
     }
 
     /// Cancel the enrollment process and clean up.
