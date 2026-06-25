@@ -52,7 +52,7 @@ final class ActionAuthWindow: NSPanel {
         onCancel: @escaping () -> Void
     ) {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 420),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -77,10 +77,14 @@ final class ActionAuthWindow: NSPanel {
             onCancel: onCancel
         )
 
-        // Clip to beautiful rounded corners.
-        let hostingView = NSHostingView(rootView: overlayView.cornerRadius(16))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 360, height: 520)
-        self.contentView = hostingView
+        // Clip to beautiful rounded corners and fix only the width
+        let fixedSizeView = overlayView
+            .frame(width: 360)
+            .cornerRadius(16)
+            
+        let hostingController = NSHostingController(rootView: fixedSizeView)
+        hostingController.sizingOptions = [.intrinsicContentSize]
+        self.contentViewController = hostingController
     }
 
     override var canBecomeKey: Bool { true }

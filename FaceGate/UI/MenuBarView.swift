@@ -23,18 +23,10 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Header.
             HStack {
-                Image(FGConstants.menuBarIcon)
+                Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 16, height: 16)
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color(hue: 0.58, saturation: 0.7, brightness: 0.95),
-                                     Color(hue: 0.61, saturation: 0.75, brightness: 0.85)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
 
                 Text("FaceGate")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
@@ -110,7 +102,7 @@ struct MenuBarView: View {
                 // Check for Updates.
                 MenuButton(
                     icon: "arrow.down.circle",
-                    title: "Check for Updates…",
+                    title: "Check for Updates",
                     action: checkForUpdates
                 )
 
@@ -120,7 +112,7 @@ struct MenuBarView: View {
                 // Settings.
                 MenuButton(
                     icon: "gearshape.fill",
-                    title: "Settings…",
+                    title: "Settings",
                     action: { openSettings() }
                 )
 

@@ -11,10 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppDelegate.shared = self
     }
 
-    private var settingsWindow: NSWindow?
     private var setupWindow: NSWindow?
-    private var settingsChromeState: SettingsChromeState?
-    private var settingsSidebarToggleTarget: SettingsSidebarToggleTarget?
     private(set) var updaterController: SPUStandardUpdaterController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -97,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var isAuthorizedToQuit = false
 
     var isSettingsWindowVisible: Bool {
-        settingsWindow?.isVisible ?? false
+        NSApp.windows.contains { $0.title == "Settings" && $0.isVisible }
     }
 
 
@@ -156,63 +153,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSettingsWindow() {
         closeMenuBarWindow()
 
-        ActionAuthWindow.show(reason: "FaceGate Settings") { [weak self] in
-            guard let self = self else { return }
-
-            if let existing = self.settingsWindow {
-                existing.orderFrontRegardless()
-                existing.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
-                return
-            }
-
-            let chromeState = SettingsChromeState()
-            let settingsView = SettingsView(chromeState: chromeState)
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 920, height: 640),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                backing: .buffered,
-                defer: false
-            )
-            window.title = "FaceGate Settings"
-            window.titleVisibility = .hidden
-            window.titlebarAppearsTransparent = true
-            window.backgroundColor = .clear
-            window.isMovableByWindowBackground = true
-            window.minSize = NSSize(width: 850, height: 620)
-            window.contentView = NSHostingView(rootView: settingsView)
-            window.level = .floating
-            installSettingsSidebarToggle(on: window, chromeState: chromeState)
-            window.center()
-            window.isReleasedWhenClosed = false
-            
-            window.orderFrontRegardless()
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-
-            self.settingsChromeState = chromeState
-            self.settingsWindow = window
+        ActionAuthWindow.show(reason: "FaceGate Settings") {
+            SettingsWindowController.show()
         }
-    }
-
-    private func installSettingsSidebarToggle(on window: NSWindow, chromeState: SettingsChromeState) {
-        let button = NSButton(frame: NSRect(x: 0, y: 0, width: 30, height: 30))
-        button.image = NSImage(systemSymbolName: "sidebar.leading", accessibilityDescription: "Toggle sidebar")
-        button.imagePosition = .imageOnly
-        button.bezelStyle = .rounded
-        button.isBordered = true
-        button.focusRingType = .none
-        button.toolTip = "Toggle sidebar"
-
-        let target = SettingsSidebarToggleTarget(chromeState: chromeState)
-        button.target = target
-        button.action = #selector(SettingsSidebarToggleTarget.toggleSidebar)
-        settingsSidebarToggleTarget = target
-
-        let accessory = NSTitlebarAccessoryViewController()
-        accessory.view = button
-        accessory.layoutAttribute = .left
-        window.addTitlebarAccessoryViewController(accessory)
     }
 
     @objc private func openSetupWindow() {
@@ -250,11 +193,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 620),
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "FaceGate Setup"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
+        window.isMovableByWindowBackground = true
         window.level = .floating
         window.contentView = NSHostingView(rootView: setupView)
         window.center()
@@ -288,17 +235,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             print("[FaceGate] Failed to sync uninstall protection on launch: \(error)")
         }
-    }
-}
-
-private final class SettingsSidebarToggleTarget: NSObject {
-    private let chromeState: SettingsChromeState
-
-    init(chromeState: SettingsChromeState) {
-        self.chromeState = chromeState
-    }
-
-    @objc func toggleSidebar() {
-        chromeState.isSidebarCollapsed.toggle()
     }
 }

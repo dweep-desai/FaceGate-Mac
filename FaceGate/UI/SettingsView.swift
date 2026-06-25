@@ -2,246 +2,272 @@ import AppKit
 import ServiceManagement
 import SwiftUI
 
-final class SettingsChromeState: ObservableObject {
-    @Published var isSidebarCollapsed = false
+// MARK: - Tab Enum
+
+enum SettingsTab: String, CaseIterable, Identifiable {
+    case lockedApps = "Locked Apps"
+    case authentication = "Authentication"
+    case behavior = "Behavior"
+    case about = "About"
+
+    var id: String { rawValue }
+
+    var title: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .lockedApps: return "lock.app.dashed"
+        case .authentication: return "person.badge.key.fill"
+        case .behavior: return "gearshape.2.fill"
+        case .about: return "info.circle.fill"
+        }
+    }
 }
 
-/// The main settings window with tabbed navigation.
+// MARK: - Navigation State
+
+@MainActor
+@Observable
+final class SettingsNavigation {
+    static let shared = SettingsNavigation()
+    var selectedTab: SettingsTab? = .lockedApps
+    private init() {}
+}
+
+// MARK: - Main Settings View
+
 struct SettingsView: View {
-    @ObservedObject var lockedAppsManager = LockedAppsManager.shared
-    @ObservedObject var chromeState: SettingsChromeState
+    @State private var navigation = SettingsNavigation.shared
+    @State private var navigationHistory: [SettingsTab] = [.lockedApps]
+    @State private var historyIndex = 0
+    @State private var isHistoryNavigation = false
 
-    @State private var selectedTab: SettingsTab = .lockedApps
-
-    init(chromeState: SettingsChromeState = SettingsChromeState()) {
-        self.chromeState = chromeState
+    private var activeTab: SettingsTab {
+        navigation.selectedTab ?? .lockedApps
     }
 
-    enum SettingsTab: String, CaseIterable, Identifiable {
-        case lockedApps = "Locked Apps"
-        case authentication = "Authentication"
-        case behavior = "Behavior"
-        case about = "About"
-
-        var id: String { rawValue }
-
-        var icon: String {
-            switch self {
-            case .lockedApps: return "lock.app.dashed"
-            case .authentication: return "person.badge.key.fill"
-            case .behavior: return "gearshape.2.fill"
-            case .about: return "info.circle.fill"
-            }
-        }
-
-        var description: String {
-            switch self {
-            case .lockedApps: return "Choose which apps require authentication."
-            case .authentication: return "Tune Face Unlock, Touch ID, and password fallback."
-            case .behavior: return "Adjust launch, locking, schedules, and emergency controls."
-            case .about: return "Version, license, and project details."
-            }
-        }
-    }
+    @State private var columnVisibility = NavigationSplitViewVisibility.all
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            Color.codexWindowBackground
-                .ignoresSafeArea()
-
-            HStack(spacing: 0) {
-                if !chromeState.isSidebarCollapsed {
-                    CodexSettingsSidebar(selectedTab: $selectedTab)
-                        .frame(width: 292)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
-                }
-
-                SettingsDetailPane(selectedTab: selectedTab)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .animation(.spring(response: 0.28, dampingFraction: 0.86), value: chromeState.isSidebarCollapsed)
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            SettingsSidebarView(selectedTab: $navigation.selectedTab)
+                .navigationSplitViewColumnWidth(
+                    min: 200,
+                    ideal: 220,
+                    max: 260
+                )
+        } detail: {
+            SettingsDetailView(tab: activeTab)
         }
-        .preferredColorScheme(.dark)
-        .frame(minWidth: 850, minHeight: 620)
-        .toolbar(.hidden)
+        .navigationTitle("Settings")
+        .navigationSplitViewStyle(.balanced)
+        .frame(minWidth: 660, minHeight: 540)
+        .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                Button { goBack() } label: { Image(systemName: "chevron.left") }
+                .disabled(!canGoBack)
+                Button { goForward() } label: { Image(systemName: "chevron.right") }
+                .disabled(!canGoForward)
+            }
+        }
+        .onChangeCompat(of: navigation.selectedTab) { _ in recordNavigation() }
+    }
+
+    private var canGoBack: Bool { historyIndex > 0 }
+    private var canGoForward: Bool { historyIndex < navigationHistory.count - 1 }
+
+    private func goBack() {
+        guard canGoBack else { return }
+        isHistoryNavigation = true
+        historyIndex -= 1
+        navigation.selectedTab = navigationHistory[historyIndex]
+        DispatchQueue.main.async { isHistoryNavigation = false }
+    }
+
+    private func goForward() {
+        guard canGoForward else { return }
+        isHistoryNavigation = true
+        historyIndex += 1
+        navigation.selectedTab = navigationHistory[historyIndex]
+        DispatchQueue.main.async { isHistoryNavigation = false }
+    }
+
+    private func recordNavigation() {
+        guard !isHistoryNavigation else { return }
+        guard let tab = navigation.selectedTab else { return }
+        if navigationHistory.last == tab { return }
+        if historyIndex < navigationHistory.count - 1 {
+            navigationHistory = Array(navigationHistory.prefix(historyIndex + 1))
+        }
+        navigationHistory.append(tab)
+        historyIndex = navigationHistory.count - 1
     }
 }
 
-private struct CodexSettingsSidebar: View {
-    @Binding var selectedTab: SettingsView.SettingsTab
+// MARK: - Sidebar
+
+private struct SettingsSidebarView: View {
+    @Binding var selectedTab: SettingsTab?
+    @State private var showPermissions = false
 
     var body: some View {
-        ZStack {
-            CodexSidebarVisualEffect(material: .sidebar, blendingMode: .behindWindow)
-
-            LinearGradient(
-                colors: [
-                    Color(red: 0.30, green: 0.32, blue: 0.42).opacity(0.36),
-                    Color(red: 0.12, green: 0.22, blue: 0.22).opacity(0.30),
-                    Color.black.opacity(0.08)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("FaceGate")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.92))
-                        Text("Settings")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.48))
-                    }
+        List(selection: $selectedTab) {
+            ForEach(SettingsTab.allCases) { tab in
+                Label(tab.title, systemImage: tab.systemImage)
+                    .tag(tab)
+            }
+        }
+        .listStyle(.sidebar)
+        .scrollEdgeEffectStyleSoftIfAvailable()
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Button(action: { showPermissions = true }) {
+                    Image(systemName: "hand.raised.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color(nsColor: .controlBackgroundColor)))
+                        .overlay(Circle().strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5))
+                        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
                 }
-                .padding(.top, 34)
-                .padding(.horizontal, 18)
-                .padding(.bottom, 20)
-
-                Text("Preferences")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.38))
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 8)
-
-                VStack(spacing: 3) {
-                    ForEach(SettingsView.SettingsTab.allCases) { tab in
-                        CodexSidebarRow(
-                            tab: tab,
-                            isSelected: selectedTab == tab
-                        ) {
-                            selectedTab = tab
-                        }
-                    }
-                }
-                .padding(.horizontal, 8)
+                .buttonStyle(.plain)
+                .help("Permissions")
 
                 Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .navigationTitle("Settings")
+        .sheet(isPresented: $showPermissions) {
+            PermissionsDialogView()
+        }
+    }
+}
 
-                HStack(spacing: 9) {
-                    Image(systemName: "sparkle.magnifyingglass")
-                        .font(.system(size: 13, weight: .medium))
-                    Text("Protected locally")
-                        .font(.system(size: 12, weight: .medium))
+// MARK: - Permissions Dialog
+
+private struct PermissionsDialogView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var accessibilityGranted = AXIsProcessTrusted()
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Permissions")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+            
+            Text("FaceGate needs these permissions to protect your apps.")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    Image(systemName: "hand.raised.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.blue)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Accessibility")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Required to monitor and block app launches")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
                     Spacer()
+                    if accessibilityGranted {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    } else {
+                        Button("Grant") {
+                            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+                            _ = AXIsProcessTrustedWithOptions(options)
+                            
+                            // Also open settings to be sure.
+                            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+                            NSWorkspace.shared.open(url)
+                        }
+                        .controlSize(.small)
+                    }
                 }
-                .foregroundStyle(.white.opacity(0.54))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 16)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
+
+                HStack(spacing: 12) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.blue)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Camera")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Required for Face Unlock")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Text("Auto")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color(nsColor: .windowBackgroundColor)))
+                }
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
             }
+            
+            Button("Done") {
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.top, 8)
         }
-        .overlay(alignment: .trailing) {
-            Rectangle()
-                .fill(Color.white.opacity(0.08))
-                .frame(width: 1)
+        .padding(24)
+        .frame(width: 380)
+        .task {
+            while !Task.isCancelled {
+                await MainActor.run {
+                    let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false] as CFDictionary
+                    let isTrusted = AXIsProcessTrustedWithOptions(options)
+                    if accessibilityGranted != isTrusted {
+                        accessibilityGranted = isTrusted
+                    }
+                }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
         }
     }
 }
 
-private struct CodexSidebarRow: View {
-    let tab: SettingsView.SettingsTab
-    let isSelected: Bool
-    let action: () -> Void
+// MARK: - Detail Router
+
+private struct SettingsDetailView: View {
+    let tab: SettingsTab
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 11) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 15, weight: .medium))
-                    .frame(width: 22)
-                    .symbolRenderingMode(.hierarchical)
-
-                Text(tab.rawValue)
-                    .font(.system(size: 14, weight: .medium))
-                    .lineLimit(1)
-
-                Spacer()
+        Group {
+            switch tab {
+            case .lockedApps: LockedAppsSettingsView()
+            case .authentication: AuthSettingsView()
+            case .behavior: BehaviorSettingsView()
+            case .about: AboutView()
             }
-            .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.70))
-            .padding(.horizontal, 9)
-            .frame(height: 38)
-            .background {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 7)
-                        .fill(Color.white.opacity(0.11))
-                }
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 7))
         }
-        .buttonStyle(.plain)
-        .focusable(false)
+        .navigationTitle(tab.title)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
-private struct SettingsDetailPane: View {
-    let selectedTab: SettingsView.SettingsTab
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(selectedTab.rawValue)
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.94))
-                    Text(selectedTab.description)
-                        .font(.system(size: 13))
-                        .foregroundStyle(.white.opacity(0.48))
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, 30)
-            .padding(.top, 34)
-            .padding(.bottom, 18)
-
-            Divider()
-                .overlay(Color.white.opacity(0.07))
-
-            selectedContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.codexWindowBackground)
-        }
-        .background(Color.codexWindowBackground)
-    }
-
+private extension View {
     @ViewBuilder
-    private var selectedContent: some View {
-        switch selectedTab {
-        case .lockedApps:
-            LockedAppsSettingsView()
-        case .authentication:
-            AuthSettingsView()
-        case .behavior:
-            BehaviorSettingsView()
-        case .about:
-            AboutView()
+    func scrollEdgeEffectStyleSoftIfAvailable() -> some View {
+        if #available(macOS 26.0, *) {
+            scrollEdgeEffectStyle(.soft, for: .all)
+        } else {
+            self
         }
     }
-}
-
-private struct CodexSidebarVisualEffect: NSViewRepresentable {
-    let material: NSVisualEffectView.Material
-    let blendingMode: NSVisualEffectView.BlendingMode
-
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = material
-        view.blendingMode = blendingMode
-        view.state = .active
-        view.isEmphasized = false
-        return view
-    }
-
-    func updateNSView(_ view: NSVisualEffectView, context: Context) {
-        view.material = material
-        view.blendingMode = blendingMode
-        view.state = .active
-    }
-}
-
-private extension Color {
-    static let codexWindowBackground = Color(red: 0.075, green: 0.075, blue: 0.073)
 }
 
 // MARK: - Auth Settings
@@ -405,6 +431,8 @@ private struct AuthSettingsView: View {
                                     .textFieldStyle(.roundedBorder)
                                     .multilineTextAlignment(.leading)
                             }
+                            
+                            PasswordStrengthView(password: newPassword)
 
                             if let error = passwordError {
                                 Text(error)
@@ -449,6 +477,7 @@ private struct AuthSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .contentMargins(.top, 8, for: .scrollContent)
         .sheet(isPresented: $showFaceEnrollment) {
             FaceEnrollmentView(
                 onComplete: {
@@ -483,12 +512,22 @@ private struct AuthSettingsView: View {
             passwordError = "Password cannot be empty"
             return
         }
-        guard newPassword == confirmPassword else {
-            passwordError = "Passwords don't match"
+        guard newPassword.count >= 6 else {
+            passwordError = "Password must be at least 6 characters"
             return
         }
-        guard newPassword.count >= 4 else {
-            passwordError = "Password must be at least 4 characters"
+        let hasUpper = newPassword.rangeOfCharacter(from: CharacterSet.uppercaseLetters) != nil
+        let hasLower = newPassword.rangeOfCharacter(from: CharacterSet.lowercaseLetters) != nil
+        let hasNumber = newPassword.rangeOfCharacter(from: CharacterSet.decimalDigits) != nil
+        let specialChars = CharacterSet(charactersIn: "!@#$%^&*()_+-=[]{}|;':\",./<>?\\")
+        let hasSpecial = newPassword.rangeOfCharacter(from: specialChars) != nil
+        
+        guard hasUpper && hasLower && hasNumber && hasSpecial else {
+            passwordError = "Password must meet all strength criteria"
+            return
+        }
+        guard newPassword == confirmPassword else {
+            passwordError = "Passwords don't match"
             return
         }
 
@@ -885,6 +924,7 @@ private struct BehaviorSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .contentMargins(.top, 8, for: .scrollContent)
         .onAppear {
             // Sync uninstall protection state
             let currentStatus = getActualProtectionState()
@@ -1025,7 +1065,9 @@ private struct BehaviorSettingsView: View {
 
 private struct AboutView: View {
     var body: some View {
-        VStack(spacing: 20) {
+        Form {
+            Section {
+                VStack(spacing: 20) {
             Spacer()
 
             if let appIcon = NSApp.applicationIconImage {
@@ -1107,8 +1149,12 @@ private struct AboutView: View {
             }
 
             Spacer()
+                }
+            }
         }
-        .frame(maxWidth: .infinity)
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .contentMargins(.top, 8, for: .scrollContent)
     }
 }
 

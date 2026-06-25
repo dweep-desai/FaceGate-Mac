@@ -24,7 +24,6 @@ struct ScanningAnimation: View {
                 scanningView
             }
         }
-        .frame(width: 200, height: 200)
     }
 
     // MARK: - Scanning State
