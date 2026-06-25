@@ -119,12 +119,22 @@ final class AuthenticationManager: ObservableObject {
         }
     }
 
+    /// Stop any in-progress Touch ID authentication.
+    func stopTouchIDAuth() {
+        touchIDAuth.cancelAuthentication()
+        if case .authenticating(let method) = authState, method == .touchID {
+            authState = .idle
+        }
+    }
+
     /// Authenticate using the app password.
     /// - Parameter password: The password the user entered.
     /// - Returns: `true` if authentication succeeded.
     func authenticateWithPassword(_ password: String) -> Bool {
         guard !isLockedOut else { return false }
 
+        stopTouchIDAuth() // Ensure Touch ID is cancelled if active
+        
         authState = .authenticating(.appPassword)
 
         if passwordAuth.verifyPassword(password) {

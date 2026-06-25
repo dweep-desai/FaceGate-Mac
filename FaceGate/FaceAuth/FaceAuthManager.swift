@@ -131,7 +131,7 @@ final class FaceAuthManager: ObservableObject {
             self?.processAuthFrame(pixelBuffer)
         }
 
-        cameraManager.startCapture()
+        cameraManager.checkPermission()
 
         // Cancel any existing timeout before scheduling a new one.
         timeoutWorkItem?.cancel()
