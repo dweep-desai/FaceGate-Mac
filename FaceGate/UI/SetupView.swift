@@ -9,7 +9,6 @@ struct SetupView: View {
     @State private var confirmPassword = ""
     @State private var passwordError: String?
     @State private var accessibilityGranted = false
-    @State private var checkTimer: Timer?
 
     /// Called when setup is complete.
     var onSetupComplete: () -> Void
@@ -27,40 +26,45 @@ struct SetupView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Progress indicator.
-            HStack(spacing: 8) {
-                ForEach(SetupStep.allCases, id: \.rawValue) { step in
-                    Capsule()
-                        .fill(step.rawValue <= currentStep.rawValue
-                              ? Color(hue: 0.58, saturation: 0.6, brightness: 0.85)
-                              : Color(nsColor: .separatorColor))
-                        .frame(height: 3)
+        ZStack {
+            VisualEffectBackground(material: .windowBackground, blendingMode: .behindWindow)
+                .ignoresSafeArea()
+                
+            VStack(spacing: 0) {
+                // Progress indicator.
+                HStack(spacing: 8) {
+                    ForEach(SetupStep.allCases, id: \.rawValue) { step in
+                        Capsule()
+                            .fill(step.rawValue <= currentStep.rawValue
+                                  ? Color(hue: 0.58, saturation: 0.6, brightness: 0.85)
+                                  : Color(nsColor: .separatorColor))
+                            .frame(height: 3)
+                    }
                 }
-            }
-            .padding(.horizontal, 40)
-            .padding(.top, 20)
-            .padding(.bottom, 8)
+                .padding(.horizontal, 40)
+                .padding(.top, 40)
+                .padding(.bottom, 8)
 
-            // Step content.
-            Group {
-                switch currentStep {
-                case .welcome:
-                    welcomeStep
-                case .permissions:
-                    permissionsStep
-                case .faceEnrollment:
-                    faceEnrollmentStep
-                case .setPassword:
-                    passwordStep
-                case .selectApps:
-                    selectAppsStep
-                case .complete:
-                    completeStep
+                // Step content.
+                Group {
+                    switch currentStep {
+                    case .welcome:
+                        welcomeStep
+                    case .permissions:
+                        permissionsStep
+                    case .faceEnrollment:
+                        faceEnrollmentStep
+                    case .setPassword:
+                        passwordStep
+                    case .selectApps:
+                        selectAppsStep
+                    case .complete:
+                        completeStep
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .animation(.easeInOut(duration: 0.3), value: currentStep)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.easeInOut(duration: 0.3), value: currentStep)
         }
         .frame(width: 560, height: 620)
     }
@@ -156,10 +160,17 @@ struct SetupView: View {
             .padding(.bottom, 30)
         }
         .onAppear {
-            startAccessibilityCheck()
+            checkAccessibility()
         }
-        .onDisappear {
-            checkTimer?.invalidate()
+        .task {
+            while !Task.isCancelled {
+                if currentStep == .permissions {
+                    await MainActor.run {
+                        checkAccessibility()
+                    }
+                }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
         }
     }
 
@@ -195,6 +206,9 @@ struct SetupView: View {
                 PasswordField(placeholder: "Choose a password", text: $password)
                     .frame(maxWidth: 300)
                 PasswordField(placeholder: "Confirm password", text: $confirmPassword)
+                    .frame(maxWidth: 300)
+
+                PasswordStrengthView(password: password)
                     .frame(maxWidth: 300)
 
                 if let error = passwordError {
@@ -276,7 +290,7 @@ struct SetupView: View {
                 .frame(maxWidth: 360)
 
             HStack(spacing: 4) {
-                Image(FGConstants.menuBarIcon)
+                Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 14, height: 14)
@@ -353,8 +367,18 @@ struct SetupView: View {
             passwordError = "Password cannot be empty"
             return
         }
-        guard password.count >= 4 else {
-            passwordError = "Password must be at least 4 characters"
+        guard password.count >= 6 else {
+            passwordError = "Password must be at least 6 characters"
+            return
+        }
+        let hasUpper = password.rangeOfCharacter(from: CharacterSet.uppercaseLetters) != nil
+        let hasLower = password.rangeOfCharacter(from: CharacterSet.lowercaseLetters) != nil
+        let hasNumber = password.rangeOfCharacter(from: CharacterSet.decimalDigits) != nil
+        let specialChars = CharacterSet(charactersIn: "!@#$%^&*()_+-=[]{}|;':\",./<>?\\")
+        let hasSpecial = password.rangeOfCharacter(from: specialChars) != nil
+        
+        guard hasUpper && hasLower && hasNumber && hasSpecial else {
+            passwordError = "Password must meet all strength criteria"
             return
         }
         guard password == confirmPassword else {
@@ -371,19 +395,16 @@ struct SetupView: View {
     }
 
     private func openAccessibilitySettings() {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
+        
         let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
         NSWorkspace.shared.open(url)
     }
 
-    private func startAccessibilityCheck() {
-        checkAccessibility()
-        checkTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
-            checkAccessibility()
-        }
-    }
-
     private func checkAccessibility() {
-        accessibilityGranted = AXIsProcessTrusted()
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false] as CFDictionary
+        accessibilityGranted = AXIsProcessTrustedWithOptions(options)
     }
 }
 
