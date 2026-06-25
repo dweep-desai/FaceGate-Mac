@@ -54,7 +54,7 @@ cp -R /tmp/FaceEmbedding.mlmodelc FaceGate/ML/
 
 # 3e. Generate and build
 xcodegen generate
-xcodebuild -project FaceGate.xcodeproj -scheme FaceGate -configuration Release build
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project FaceGate.xcodeproj -scheme FaceGate -destination "platform=macOS" -configuration Release build
 
 # 3f. Restore project.yml and source tree
 rm -rf FaceGate/ML/FaceEmbedding.mlmodelc

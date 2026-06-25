@@ -20,8 +20,9 @@ generate:
 # Build the app (debug)
 build: generate
 	@echo "→ Building $(APP_NAME) (Debug)..."
-	xcodebuild -project $(APP_NAME).xcodeproj \
+	DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project $(APP_NAME).xcodeproj \
 		-scheme $(SCHEME) \
+		-destination "platform=macOS" \
 		-configuration Debug \
 		-derivedDataPath $(BUILD_DIR)/DerivedData \
 		build
@@ -30,8 +31,9 @@ build: generate
 # Archive the app (release)
 archive: generate
 	@echo "→ Archiving $(APP_NAME) (Release)..."
-	xcodebuild -project $(APP_NAME).xcodeproj \
+	DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project $(APP_NAME).xcodeproj \
 		-scheme $(SCHEME) \
+		-destination "platform=macOS" \
 		-configuration Release \
 		-archivePath $(ARCHIVE_PATH) \
 		archive
@@ -41,7 +43,7 @@ archive: generate
 export: archive
 	@echo "→ Exporting app..."
 	@mkdir -p $(BUILD_DIR)
-	xcodebuild -exportArchive \
+	DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -exportArchive \
 		-archivePath $(ARCHIVE_PATH) \
 		-exportPath $(BUILD_DIR) \
 		-exportOptionsPlist ExportOptions.plist 2>/dev/null || \
