@@ -25,7 +25,7 @@ final class AppMonitor: ObservableObject {
 
     private init() {}
 
-    /// Record that an app was just unlocked (starts a 1-second cooldown against re-lock).
+    /// Record that an app was just unlocked (starts a 3-second cooldown against re-lock).
     func recordUnlock(for bundleIdentifier: String) {
         recentlyUnlocked[bundleIdentifier] = Date()
     }
@@ -95,10 +95,10 @@ final class AppMonitor: ObservableObject {
         // Check if there's an active unlock session.
         guard !sessionManager.hasActiveSession(for: bundleId) else { return }
 
-        // Cooldown: don't re-lock within 1 second of being unlocked.
+        // Cooldown: don't re-lock within 3 seconds of being unlocked.
         // This prevents a re-lock loop when "lock immediately" (no session) is set.
         if let lastUnlock = recentlyUnlocked[bundleId],
-           Date().timeIntervalSince(lastUnlock) < 1 {
+           Date().timeIntervalSince(lastUnlock) < 3.0 {
             return
         }
 

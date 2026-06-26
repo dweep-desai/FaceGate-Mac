@@ -27,6 +27,28 @@ final class FaceDetector {
         }
     }
 
+    /// Detect face landmarks in a pixel buffer.
+    /// - Parameters:
+    ///   - pixelBuffer: The video frame to analyze.
+    ///   - completion: Returns an array of face observations with landmarks.
+    func detectFaceLandmarks(in pixelBuffer: CVPixelBuffer, completion: @escaping ([VNFaceObservation]) -> Void) {
+        let request = VNDetectFaceLandmarksRequest { request, error in
+            guard error == nil,
+                  let results = request.results as? [VNFaceObservation] else {
+                completion([])
+                return
+            }
+            completion(results)
+        }
+
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
+        do {
+            try handler.perform([request])
+        } catch {
+            completion([])
+        }
+    }
+
     /// Detect faces with quality scores — used during enrollment to filter poor frames.
     /// - Parameters:
     ///   - pixelBuffer: The video frame to analyze.

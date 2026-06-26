@@ -15,7 +15,22 @@ public struct FaceWireframeData: Equatable {
     public var nosePoints: [CGPoint] = []
     public var lipsPoints: [CGPoint] = []
     
+    // Captured face image for texturing/skin overlay
+    public var faceImage: NSImage? = nil
+    
     public init() {}
+    
+    public static func == (lhs: FaceWireframeData, rhs: FaceWireframeData) -> Bool {
+        return lhs.yaw == rhs.yaw &&
+               lhs.pitch == rhs.pitch &&
+               lhs.roll == rhs.roll &&
+               lhs.outlinePoints == rhs.outlinePoints &&
+               lhs.leftEyePoints == rhs.leftEyePoints &&
+               lhs.rightEyePoints == rhs.rightEyePoints &&
+               lhs.nosePoints == rhs.nosePoints &&
+               lhs.lipsPoints == rhs.lipsPoints &&
+               lhs.faceImage === rhs.faceImage
+    }
 }
 
 /// A futuristic holographic grid pattern view shown behind the 3D face.
@@ -65,51 +80,155 @@ public struct HolographicFaceView: View {
             HolographicGridPattern()
                 .opacity(0.2)
             
-            // Stylized 3D-oriented face visualization using native Canvas
+            // Stylized or real-time 3D-oriented face visualization using native Canvas
             Canvas { context, size in
-                let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                let radius = min(size.width, size.height) * 0.35
-                
-                // Draw base head oval
-                var baseCircle = Path()
-                baseCircle.addEllipse(in: CGRect(x: center.x - radius, y: center.y - radius * 1.2, width: radius * 2, height: radius * 2.4))
-                context.stroke(baseCircle, with: .color(Color.cyan.opacity(0.4)), lineWidth: 1.5)
-                
-                // Draw grid lines on the sphere to simulate a 3D grid sphere
-                for i in 1...3 {
-                    let offset = CGFloat(i) * 0.25 * radius
+                if !faceData.outlinePoints.isEmpty {
+                    // Map [0, 1] range to a centered box with 15% padding on each side.
+                    let padding: CGFloat = 0.15
+                    let scaleX = size.width * (1.0 - 2.0 * padding)
+                    let scaleY = size.height * (1.0 - 2.0 * padding)
+                    let offsetX = size.width * padding
+                    let offsetY = size.height * padding
                     
-                    // Horizontal latitude lines
-                    var latPath = Path()
-                    latPath.move(to: CGPoint(x: center.x - sqrt(radius*radius - offset*offset), y: center.y - offset))
-                    latPath.addLine(to: CGPoint(x: center.x + sqrt(radius*radius - offset*offset), y: center.y - offset))
-                    latPath.move(to: CGPoint(x: center.x - sqrt(radius*radius - offset*offset), y: center.y + offset))
-                    latPath.addLine(to: CGPoint(x: center.x + sqrt(radius*radius - offset*offset), y: center.y + offset))
-                    context.stroke(latPath, with: .color(Color.cyan.opacity(0.15)), lineWidth: 1)
+                    func scale(_ pt: CGPoint) -> CGPoint {
+                        return CGPoint(
+                            x: offsetX + pt.x * scaleX,
+                            y: offsetY + pt.y * scaleY
+                        )
+                    }
                     
-                    // Vertical longitude lines (arcs)
-                    var lonPath = Path()
-                    lonPath.addEllipse(in: CGRect(x: center.x - offset, y: center.y - radius * 1.2, width: offset * 2, height: radius * 2.4))
-                    context.stroke(lonPath, with: .color(Color.cyan.opacity(0.15)), lineWidth: 1)
+                    // 1. Draw outer face contour
+                    var contourPath = Path()
+                    contourPath.move(to: scale(faceData.outlinePoints[0]))
+                    for pt in faceData.outlinePoints.dropFirst() {
+                        contourPath.addLine(to: scale(pt))
+                    }
+                    context.stroke(contourPath, with: .color(Color.cyan.opacity(0.6)), lineWidth: 2)
+                    
+                    // Draw glow dots at contour points
+                    for pt in faceData.outlinePoints {
+                        let scaledPt = scale(pt)
+                        var dot = Path()
+                        dot.addEllipse(in: CGRect(x: scaledPt.x - 2, y: scaledPt.y - 2, width: 4, height: 4))
+                        context.fill(dot, with: .color(Color.cyan))
+                    }
+                    
+                    // 2. Draw left eye
+                    if !faceData.leftEyePoints.isEmpty {
+                        var eyePath = Path()
+                        eyePath.move(to: scale(faceData.leftEyePoints[0]))
+                        for pt in faceData.leftEyePoints.dropFirst() {
+                            eyePath.addLine(to: scale(pt))
+                        }
+                        eyePath.closeSubpath()
+                        context.stroke(eyePath, with: .color(Color.cyan.opacity(0.8)), lineWidth: 1.5)
+                        
+                        for pt in faceData.leftEyePoints {
+                            let scaledPt = scale(pt)
+                            var dot = Path()
+                            dot.addEllipse(in: CGRect(x: scaledPt.x - 1.5, y: scaledPt.y - 1.5, width: 3, height: 3))
+                            context.fill(dot, with: .color(Color.cyan))
+                        }
+                    }
+                    
+                    // 3. Draw right eye
+                    if !faceData.rightEyePoints.isEmpty {
+                        var eyePath = Path()
+                        eyePath.move(to: scale(faceData.rightEyePoints[0]))
+                        for pt in faceData.rightEyePoints.dropFirst() {
+                            eyePath.addLine(to: scale(pt))
+                        }
+                        eyePath.closeSubpath()
+                        context.stroke(eyePath, with: .color(Color.cyan.opacity(0.8)), lineWidth: 1.5)
+                        
+                        for pt in faceData.rightEyePoints {
+                            let scaledPt = scale(pt)
+                            var dot = Path()
+                            dot.addEllipse(in: CGRect(x: scaledPt.x - 1.5, y: scaledPt.y - 1.5, width: 3, height: 3))
+                            context.fill(dot, with: .color(Color.cyan))
+                        }
+                    }
+                    
+                    // 4. Draw nose
+                    if !faceData.nosePoints.isEmpty {
+                        var nosePath = Path()
+                        nosePath.move(to: scale(faceData.nosePoints[0]))
+                        for pt in faceData.nosePoints.dropFirst() {
+                            nosePath.addLine(to: scale(pt))
+                        }
+                        context.stroke(nosePath, with: .color(Color.cyan.opacity(0.8)), lineWidth: 1.5)
+                        
+                        for pt in faceData.nosePoints {
+                            let scaledPt = scale(pt)
+                            var dot = Path()
+                            dot.addEllipse(in: CGRect(x: scaledPt.x - 1.5, y: scaledPt.y - 1.5, width: 3, height: 3))
+                            context.fill(dot, with: .color(Color.cyan))
+                        }
+                    }
+                    
+                    // 5. Draw lips
+                    if !faceData.lipsPoints.isEmpty {
+                        var lipsPath = Path()
+                        lipsPath.move(to: scale(faceData.lipsPoints[0]))
+                        for pt in faceData.lipsPoints.dropFirst() {
+                            lipsPath.addLine(to: scale(pt))
+                        }
+                        lipsPath.closeSubpath()
+                        context.stroke(lipsPath, with: .color(Color.cyan.opacity(0.8)), lineWidth: 1.5)
+                        
+                        for pt in faceData.lipsPoints {
+                            let scaledPt = scale(pt)
+                            var dot = Path()
+                            dot.addEllipse(in: CGRect(x: scaledPt.x - 1.5, y: scaledPt.y - 1.5, width: 3, height: 3))
+                            context.fill(dot, with: .color(Color.cyan))
+                        }
+                    }
+                } else {
+                    // Fallback to stylized 3D oval wireframe
+                    let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                    let radius = min(size.width, size.height) * 0.35
+                    
+                    // Draw base head oval
+                    var baseCircle = Path()
+                    baseCircle.addEllipse(in: CGRect(x: center.x - radius, y: center.y - radius * 1.2, width: radius * 2, height: radius * 2.4))
+                    context.stroke(baseCircle, with: .color(Color.cyan.opacity(0.4)), lineWidth: 1.5)
+                    
+                    // Draw grid lines on the sphere to simulate a 3D grid sphere
+                    for i in 1...3 {
+                        let offset = CGFloat(i) * 0.25 * radius
+                        
+                        // Horizontal latitude lines
+                        var latPath = Path()
+                        latPath.move(to: CGPoint(x: center.x - sqrt(radius*radius - offset*offset), y: center.y - offset))
+                        latPath.addLine(to: CGPoint(x: center.x + sqrt(radius*radius - offset*offset), y: center.y - offset))
+                        latPath.move(to: CGPoint(x: center.x - sqrt(radius*radius - offset*offset), y: center.y + offset))
+                        latPath.addLine(to: CGPoint(x: center.x + sqrt(radius*radius - offset*offset), y: center.y + offset))
+                        context.stroke(latPath, with: .color(Color.cyan.opacity(0.15)), lineWidth: 1)
+                        
+                        // Vertical longitude lines (arcs)
+                        var lonPath = Path()
+                        lonPath.addEllipse(in: CGRect(x: center.x - offset, y: center.y - radius * 1.2, width: offset * 2, height: radius * 2.4))
+                        context.stroke(lonPath, with: .color(Color.cyan.opacity(0.15)), lineWidth: 1)
+                    }
+                    
+                    // Draw face nose bridge indicator
+                    var nosePath = Path()
+                    nosePath.move(to: CGPoint(x: center.x, y: center.y - radius * 0.3))
+                    nosePath.addLine(to: CGPoint(x: center.x, y: center.y + radius * 0.2))
+                    nosePath.addLine(to: CGPoint(x: center.x - radius * 0.1, y: center.y + radius * 0.2))
+                    context.stroke(nosePath, with: .color(Color.cyan.opacity(0.7)), lineWidth: 2)
+                    
+                    // Draw eyes indicators
+                    let eyeOffset = radius * 0.35
+                    let eyeY = center.y - radius * 0.25
+                    var leftEye = Path()
+                    leftEye.addEllipse(in: CGRect(x: center.x - eyeOffset - 6, y: eyeY - 4, width: 12, height: 8))
+                    context.stroke(leftEye, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
+                    
+                    var rightEye = Path()
+                    rightEye.addEllipse(in: CGRect(x: center.x + eyeOffset - 6, y: eyeY - 4, width: 12, height: 8))
+                    context.stroke(rightEye, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
                 }
-                
-                // Draw face nose bridge indicator
-                var nosePath = Path()
-                nosePath.move(to: CGPoint(x: center.x, y: center.y - radius * 0.3))
-                nosePath.addLine(to: CGPoint(x: center.x, y: center.y + radius * 0.2))
-                nosePath.addLine(to: CGPoint(x: center.x - radius * 0.1, y: center.y + radius * 0.2))
-                context.stroke(nosePath, with: .color(Color.cyan.opacity(0.7)), lineWidth: 2)
-                
-                // Draw eyes indicators
-                let eyeOffset = radius * 0.35
-                let eyeY = center.y - radius * 0.25
-                var leftEye = Path()
-                leftEye.addEllipse(in: CGRect(x: center.x - eyeOffset - 6, y: eyeY - 4, width: 12, height: 8))
-                context.stroke(leftEye, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
-                
-                var rightEye = Path()
-                rightEye.addEllipse(in: CGRect(x: center.x + eyeOffset - 6, y: eyeY - 4, width: 12, height: 8))
-                context.stroke(rightEye, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
             }
             .shadow(color: Color.cyan.opacity(0.5), radius: 6)
             // Apply 3D perspective to simulate physical head orientation

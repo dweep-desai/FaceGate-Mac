@@ -10,6 +10,9 @@ struct SetupView: View {
     @State private var passwordError: String?
     @State private var accessibilityGranted = false
     @State private var checkTimer: Timer?
+    
+    /// The name chosen for the first biometric face profile during onboarding setup.
+    @State private var profileName = "Primary Face"
 
     /// Called when setup is complete.
     var onSetupComplete: () -> Void
@@ -20,6 +23,7 @@ struct SetupView: View {
     enum SetupStep: Int, CaseIterable {
         case welcome
         case permissions
+        case nameProfile
         case faceEnrollment
         case setPassword
         case selectApps
@@ -49,6 +53,8 @@ struct SetupView: View {
                     welcomeStep
                 case .permissions:
                     permissionsStep
+                case .nameProfile:
+                    nameProfileStep
                 case .faceEnrollment:
                     faceEnrollmentStep
                 case .setPassword:
@@ -150,7 +156,7 @@ struct SetupView: View {
                     .foregroundColor(.secondary)
 
                 setupButton("Continue") {
-                    currentStep = .faceEnrollment
+                    currentStep = .nameProfile
                 }
             }
             .padding(.bottom, 30)
@@ -169,8 +175,78 @@ struct SetupView: View {
                 onComplete: {
                     currentStep = .setPassword
                 },
-                isInSettings: false
+                isInSettings: false,
+                profileName: profileName
             )
+        }
+    }
+
+    /// Step view prompting the user to name their face profile during onboarding setup.
+    private var nameProfileStep: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            Image(systemName: "faceid.badge.plus")
+                .font(.system(size: 48))
+                .foregroundColor(.blue)
+
+            Text("Name Your Face Profile")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+
+            Text("Give your first face profile a name. This helps you identify and manage different registered faces later in settings.")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 380)
+
+            VStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "tag.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                    
+                    TextField("Profile Name (e.g. Primary Face, Work)", text: $profileName)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 14))
+                        .multilineTextAlignment(.leading)
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+                )
+                .frame(maxWidth: 300)
+
+                if profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text("Profile name cannot be empty")
+                        .font(.system(size: 11))
+                        .foregroundColor(.red)
+                }
+                
+                ProfilePreviewCard(name: profileName)
+                    .padding(.top, 4)
+            }
+
+            Spacer()
+
+            HStack(spacing: 12) {
+                Button("Back") { currentStep = .permissions }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
+
+                setupButton("Start Enrollment") {
+                    if !profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        currentStep = .faceEnrollment
+                    }
+                }
+                .disabled(profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .opacity(profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1.0)
+            }
+            .padding(.bottom, 30)
         }
     }
 
@@ -459,5 +535,39 @@ private struct PermissionRow: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(nsColor: .controlBackgroundColor))
         )
+    }
+}
+
+/// A premium real-time preview card displaying the name and type of biometric key profile being registered.
+private struct ProfilePreviewCard: View {
+    let name: String
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "person.crop.circle.badge.plus")
+                .font(.system(size: 28))
+                .foregroundColor(.blue)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name.isEmpty ? "New Profile" : name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text("Biometric Key Profile")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+        )
+        .frame(maxWidth: 300)
     }
 }

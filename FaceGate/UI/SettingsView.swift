@@ -263,6 +263,17 @@ private struct AuthSettingsView: View {
         return stored > 0 ? stored : FGConstants.defaultFaceUnlockThreshold
     }()
 
+    // NEW state variables for multi-profile support:
+    @State private var enrolledProfiles: [FaceProfile] = []
+    @State private var showRenameAlert = false
+    @State private var profileToRename: FaceProfile? = nil
+    @State private var tempProfileName = ""
+    @State private var showAddProfileAlert = false
+    @State private var nextProfileName = ""
+
+    // MARK: - 3D Face Sandbox State
+    @StateObject private var sandboxVM = SandboxViewModel()
+
     var body: some View {
         Form {
             // MARK: Face Unlock Section
@@ -289,21 +300,109 @@ private struct AuthSettingsView: View {
                         }
                     }
 
-                    // Enroll / Re-enroll button.
-                    HStack {
-                        Button(faceEnrolled ? "Re-enroll Face" : "Enroll Face") {
-                            showFaceEnrollment = true
+                    // Enrolled Profiles Section
+                    if faceEnrolled && !enrolledProfiles.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Enrolled Profiles")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.secondary)
+                                .textCase(.uppercase)
+                                .padding(.top, 4)
+                            
+                            ForEach(enrolledProfiles, id: \.id) { profile in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(profile.name)
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundColor(.primary)
+                                        Text("Enrolled: \(profile.enrolledDate.formatted(date: .abbreviated, time: .shortened))")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    qualityBadge(for: profile.averageQuality)
+                                        .padding(.trailing, 8)
+                                    
+                                    Button {
+                                        profileToRename = profile
+                                        tempProfileName = profile.name
+                                        showRenameAlert = true
+                                    } label: {
+                                        Image(systemName: "pencil")
+                                            .foregroundColor(.blue)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("Rename profile")
+                                    .padding(.trailing, 8)
+                                    
+                                    Button {
+                                        if let _ = try? FaceDataStore.shared.deleteProfile(id: profile.id) {
+                                            loadProfiles()
+                                        }
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("Delete profile")
+                                }
+                                .padding(.vertical, 6)
+                                .padding(.horizontal, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+                                )
+                            }
                         }
-                        .controlSize(.small)
+                    } else if !faceEnrolled {
+                        VStack(spacing: 8) {
+                            Image(systemName: "faceid")
+                                .font(.system(size: 32))
+                                .foregroundColor(.secondary.opacity(0.6))
+                                .padding(.top, 8)
+                            
+                            Text("No Face Profiles Enrolled")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.secondary)
+                            
+                            Text("Enroll a profile to enable Face Unlock. You can add multiple profiles under different environments or settings.")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: 320)
+                                .padding(.bottom, 8)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(Color(nsColor: .separatorColor), style: StrokeStyle(lineWidth: 1, dash: [4]))
+                        )
+                    }
 
+                    // Enroll / Re-enroll / Add Profile actions
+                    HStack(spacing: 12) {
                         if faceEnrolled {
-                            Button("Delete Face Data") {
+                            Button("Add Face Profile") {
+                                nextProfileName = ""
+                                showAddProfileAlert = true
+                            }
+                            .controlSize(.small)
+                            
+                            Button("Delete All Face Data") {
                                 try? FaceDataStore.shared.delete()
-                                faceEnrolled = false
-                                faceUnlockEnabled = false
+                                loadProfiles()
                             }
                             .controlSize(.small)
                             .foregroundColor(.red)
+                        } else {
+                            Button("Enroll Face") {
+                                nextProfileName = "Primary Face"
+                                showAddProfileAlert = true
+                            }
+                            .controlSize(.small)
                         }
                     }
 
@@ -327,6 +426,21 @@ private struct AuthSettingsView: View {
                                 .foregroundColor(.secondary.opacity(0.7))
                         }
                     }
+                    
+                    // About multi-profile info box (Premium design)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("About Multi-Profile Authentication")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .textCase(.uppercase)
+                            .padding(.top, 8)
+                        
+                        Text("Each profile stores an independent mathematical representation of a registered face. FaceGate scans incoming camera feeds against all profiles. Multiple profiles are recommended for improved accuracy when wearing glasses, hats, or in varying lighting conditions.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary.opacity(0.8))
+                            .lineSpacing(3)
+                    }
+                    .padding(.top, 4)
                 }
             } header: {
                 Text("Primary")
@@ -433,6 +547,105 @@ private struct AuthSettingsView: View {
                 }
             }
 
+            // MARK: 3D Face Sandbox Section
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "arkit")
+                            .font(.system(size: 18))
+                            .foregroundColor(.cyan)
+                        VStack(alignment: .leading) {
+                            Text("3D Holographic Sandbox")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("Preview the real-time landmark grid model")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: $sandboxVM.enableSandbox)
+                            .labelsHidden()
+                    }
+                    
+                    if sandboxVM.enableSandbox {
+                        VStack(spacing: 12) {
+                            HStack {
+                                Spacer()
+                                // Holographic Face View from Face3DVisualizer.swift
+                                HolographicFaceView(faceData: sandboxVM.sandboxFaceData)
+                                    .padding(.vertical, 8)
+                                Spacer()
+                            }
+                            
+                            Toggle("Auto Rotate (Demo Mode)", isOn: $sandboxVM.autoRotate)
+                                .font(.system(size: 12))
+                            
+                            if !sandboxVM.autoRotate {
+                                VStack(spacing: 8) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack {
+                                            Text("Yaw (Left/Right)")
+                                                .font(.system(size: 11))
+                                            Spacer()
+                                            Text(String(format: "%.2f rad", sandboxVM.sandboxYaw))
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Slider(value: $sandboxVM.sandboxYaw, in: -0.6...0.6)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack {
+                                            Text("Pitch (Up/Down)")
+                                                .font(.system(size: 11))
+                                            Spacer()
+                                            Text(String(format: "%.2f rad", sandboxVM.sandboxPitch))
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Slider(value: $sandboxVM.sandboxPitch, in: -0.4...0.4)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack {
+                                            Text("Roll (Tilt)")
+                                                .font(.system(size: 11))
+                                            Spacer()
+                                            Text(String(format: "%.2f rad", sandboxVM.sandboxRoll))
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Slider(value: $sandboxVM.sandboxRoll, in: -0.4...0.4)
+                                    }
+                                }
+                                .padding(.top, 4)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Telemetry Logs")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                    .textCase(.uppercase)
+                                
+                                Text("Angles: [yaw: \(String(format: "%.3f", sandboxVM.sandboxYaw)), pitch: \(String(format: "%.3f", sandboxVM.sandboxPitch)), roll: \(String(format: "%.3f", sandboxVM.sandboxRoll))]\nActive camera: \(sandboxVM.activeCameraLabel)")
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.cyan.opacity(0.8))
+                                    .padding(8)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color.black.opacity(0.4))
+                                    .cornerRadius(4)
+                            }
+                        }
+                        .padding(10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.3))
+                        )
+                    }
+                }
+            } header: {
+                Text("3D Visualizer Sandbox (Experimental)")
+            }
+
             // MARK: Security Disclaimer
             Section {
                 HStack(alignment: .top, spacing: 8) {
@@ -453,13 +666,87 @@ private struct AuthSettingsView: View {
             FaceEnrollmentView(
                 onComplete: {
                     showFaceEnrollment = false
-                    faceEnrolled = UserDefaults.standard.bool(forKey: FGConstants.faceEnrolledKey)
+                    loadProfiles()
                     faceUnlockEnabled = UserDefaults.standard.bool(forKey: FGConstants.faceUnlockEnabledKey)
+                    nextProfileName = ""
                 },
-                isInSettings: true
+                isInSettings: true,
+                profileName: nextProfileName.isEmpty ? "Primary Face" : nextProfileName
             )
         }
+        .alert("Rename Profile", isPresented: $showRenameAlert, actions: {
+            TextField("Profile Name", text: $tempProfileName)
+            Button("Cancel", role: .cancel) {
+                profileToRename = nil
+                tempProfileName = ""
+            }
+            Button("Save") {
+                if let profile = profileToRename, !tempProfileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    try? FaceDataStore.shared.renameProfile(id: profile.id, newName: tempProfileName)
+                    loadProfiles()
+                }
+                profileToRename = nil
+                tempProfileName = ""
+            }
+        }, message: {
+            Text("Enter a new name for this face profile.")
+        })
+        .alert("New Face Profile", isPresented: $showAddProfileAlert, actions: {
+            TextField("Profile Name", text: $nextProfileName)
+            Button("Cancel", role: .cancel) {
+                nextProfileName = ""
+            }
+            Button("Next") {
+                if !nextProfileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    showFaceEnrollment = true
+                }
+            }
+        }, message: {
+            Text("Enter a name for the new face profile before starting enrollment (e.g. 'Office Glasses' or 'Morning Scan').")
+        })
+        .onAppear {
+            loadProfiles()
+        }
+        .onDisappear {
+            sandboxVM.cleanUp()
+        }
     }
+
+    private func qualityBadge(for quality: Float) -> some View {
+        let text: String
+        let color: Color
+        if quality >= 0.85 {
+            text = "Excellent"
+            color = .green
+        } else if quality >= 0.70 {
+            text = "Good"
+            color = .blue
+        } else {
+            text = "Fair"
+            color = .orange
+        }
+        return Text(text)
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(color.opacity(0.2)))
+            .overlay(
+                Capsule().strokeBorder(color.opacity(0.5), lineWidth: 0.5)
+            )
+    }
+
+    private func loadProfiles() {
+        if let enrollment = FaceDataStore.shared.load() {
+            enrolledProfiles = enrollment.profiles
+            faceEnrolled = !enrolledProfiles.isEmpty
+        } else {
+            enrolledProfiles = []
+            faceEnrolled = false
+        }
+    }
+
+
 
     private var sensitivityLabel: String {
         if faceThreshold < 0.5 {
@@ -1775,5 +2062,269 @@ private struct CameraPickerView: View {
             return cam.localizedName
         }
         return cameraManager.availableCameras.first?.localizedName ?? "No camera found"
+    }
+}
+
+// MARK: - SandboxViewModel
+
+final class SandboxViewModel: ObservableObject {
+    @Published var enableSandbox = false {
+        didSet {
+            updateSandboxState()
+        }
+    }
+    @Published var autoRotate = true {
+        didSet {
+            updateSandboxState()
+        }
+    }
+    @Published var sandboxYaw: Double = 0.0
+    @Published var sandboxPitch: Double = 0.0
+    @Published var sandboxRoll: Double = 0.0
+    @Published var liveFaceData = FaceWireframeData()
+    @Published var activeCameraLabel = "None"
+    
+    let cameraManager = CameraManager()
+    let faceDetector = FaceDetector()
+    private var rotationTimer: Timer? = nil
+    
+    init() {}
+    
+    func cleanUp() {
+        enableSandbox = false
+        updateSandboxState()
+    }
+    
+    var sandboxFaceData: FaceWireframeData {
+        if !autoRotate && enableSandbox {
+            if liveFaceData.outlinePoints.isEmpty {
+                var data = FaceWireframeData()
+                data.yaw = sandboxYaw
+                data.pitch = sandboxPitch
+                data.roll = sandboxRoll
+                return data
+            }
+            return liveFaceData
+        }
+        var data = FaceWireframeData()
+        data.yaw = sandboxYaw
+        data.pitch = sandboxPitch
+        data.roll = sandboxRoll
+        return data
+    }
+    
+    private func updateSandboxState() {
+        if enableSandbox {
+            if autoRotate {
+                stopSandboxCamera()
+                startRotationTimer()
+                activeCameraLabel = "Sandbox Loop (Simulated)"
+            } else {
+                stopRotationTimer()
+                startSandboxCamera()
+                activeCameraLabel = "Camera Active (Searching...)"
+            }
+        } else {
+            stopRotationTimer()
+            stopSandboxCamera()
+            activeCameraLabel = "None"
+        }
+    }
+    
+    private func estimateYaw(leftEye: [CGPoint], rightEye: [CGPoint], nose: [CGPoint]) -> Double? {
+        guard !leftEye.isEmpty, !rightEye.isEmpty, !nose.isEmpty else { return nil }
+        
+        let leftCenter = CGPoint(
+            x: leftEye.map { $0.x }.reduce(0, +) / CGFloat(leftEye.count),
+            y: leftEye.map { $0.y }.reduce(0, +) / CGFloat(leftEye.count)
+        )
+        
+        let rightCenter = CGPoint(
+            x: rightEye.map { $0.x }.reduce(0, +) / CGFloat(rightEye.count),
+            y: rightEye.map { $0.y }.reduce(0, +) / CGFloat(rightEye.count)
+        )
+        
+        let noseCenter = CGPoint(
+            x: nose.map { $0.x }.reduce(0, +) / CGFloat(nose.count),
+            y: nose.map { $0.y }.reduce(0, +) / CGFloat(nose.count)
+        )
+        
+        let x1 = min(leftCenter.x, rightCenter.x)
+        let x2 = max(leftCenter.x, rightCenter.x)
+        let dx = x2 - x1
+        guard dx > 0.01 else { return nil }
+        
+        let ratio = (noseCenter.x - x1) / dx
+        let diff = ratio - 0.5
+        
+        let isLeftEyeOnRight = leftCenter.x > rightCenter.x
+        let factor: Double = isLeftEyeOnRight ? -1.8 : 1.8
+        
+        let estimated = Double(diff) * factor
+        return max(-0.6, min(0.6, estimated))
+    }
+    
+    private func estimatePitch(leftEye: [CGPoint], rightEye: [CGPoint], nose: [CGPoint], lips: [CGPoint], outline: [CGPoint]) -> Double? {
+        guard !leftEye.isEmpty, !rightEye.isEmpty, !nose.isEmpty else { return nil }
+        
+        let leftCenter = CGPoint(
+            x: leftEye.map { $0.x }.reduce(0, +) / CGFloat(leftEye.count),
+            y: leftEye.map { $0.y }.reduce(0, +) / CGFloat(leftEye.count)
+        )
+        
+        let rightCenter = CGPoint(
+            x: rightEye.map { $0.x }.reduce(0, +) / CGFloat(rightEye.count),
+            y: rightEye.map { $0.y }.reduce(0, +) / CGFloat(rightEye.count)
+        )
+        
+        let eyesY = (leftCenter.y + rightCenter.y) / 2.0
+        
+        let noseCenter = CGPoint(
+            x: nose.map { $0.x }.reduce(0, +) / CGFloat(nose.count),
+            y: nose.map { $0.y }.reduce(0, +) / CGFloat(nose.count)
+        )
+        
+        let bottomY: CGFloat
+        if !lips.isEmpty {
+            bottomY = lips.map { $0.y }.reduce(0, +) / CGFloat(lips.count)
+        } else if !outline.isEmpty {
+            // Use the middle point of the jaw contour as the chin reference
+            bottomY = outline[outline.count / 2].y
+        } else {
+            return nil
+        }
+        
+        let totalDist = bottomY - eyesY
+        guard totalDist > 0.01 else { return nil }
+        
+        let noseDist = noseCenter.y - eyesY
+        let ratio = noseDist / totalDist
+        
+        let baseline = !lips.isEmpty ? 0.45 : 0.40
+        let diff = ratio - baseline
+        let factor = -1.5
+        let estimated = Double(diff) * factor
+        return max(-0.4, min(0.4, estimated))
+    }
+    
+    private func estimateRoll(leftEye: [CGPoint], rightEye: [CGPoint]) -> Double? {
+        guard !leftEye.isEmpty, !rightEye.isEmpty else { return nil }
+        
+        let leftCenter = CGPoint(
+            x: leftEye.map { $0.x }.reduce(0, +) / CGFloat(leftEye.count),
+            y: leftEye.map { $0.y }.reduce(0, +) / CGFloat(leftEye.count)
+        )
+        
+        let rightCenter = CGPoint(
+            x: rightEye.map { $0.x }.reduce(0, +) / CGFloat(rightEye.count),
+            y: rightEye.map { $0.y }.reduce(0, +) / CGFloat(rightEye.count)
+        )
+        
+        let dy = leftCenter.y - rightCenter.y
+        let dx = leftCenter.x - rightCenter.x
+        guard abs(dx) > 0.01 else { return nil }
+        
+        let angle = atan2(dy, dx)
+        return max(-0.4, min(0.4, Double(angle)))
+    }
+
+    private func startSandboxCamera() {
+        cameraManager.onFrameCaptured = { [weak self] pixelBuffer in
+            guard let self = self else { return }
+            self.faceDetector.detectFaceLandmarks(in: pixelBuffer) { [weak self] observations in
+                guard let self = self, self.enableSandbox, !self.autoRotate else { return }
+                
+                if observations.count == 1, let face = observations.first {
+                    var data = FaceWireframeData()
+                    
+                    var outline: [CGPoint] = []
+                    var nose: [CGPoint] = []
+                    var leftEye: [CGPoint] = []
+                    var rightEye: [CGPoint] = []
+                    var lips: [CGPoint] = []
+                    
+                    if let landmarks = face.landmarks {
+                        if let contour = landmarks.faceContour {
+                            outline = contour.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+                        }
+                        if let n = landmarks.nose {
+                            nose = n.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+                        }
+                        if let le = landmarks.leftEye {
+                            leftEye = le.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+                        }
+                        if let re = landmarks.rightEye {
+                            rightEye = re.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+                        }
+                        if let ol = landmarks.outerLips {
+                            lips = ol.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+                        }
+                    }
+                    
+                    data.outlinePoints = outline
+                    data.nosePoints = nose
+                    data.leftEyePoints = leftEye
+                    data.rightEyePoints = rightEye
+                    data.lipsPoints = lips
+                    
+                    let rawYaw = self.estimateYaw(leftEye: leftEye, rightEye: rightEye, nose: nose)
+                        ?? (face.yaw.map { Double(truncating: $0) } ?? 0.0)
+                        
+                    let rawPitch = self.estimatePitch(leftEye: leftEye, rightEye: rightEye, nose: nose, lips: lips, outline: outline)
+                        ?? (face.pitch.map { Double(truncating: $0) } ?? 0.0)
+                        
+                    let rawRoll = face.roll.map { Double(truncating: $0) } ?? 0.0
+                    
+                    // Smooth tracking using Exponential Moving Average filter (alpha = 0.22)
+                    let alpha = 0.22
+                    let smoothedYaw = self.sandboxYaw + alpha * (rawYaw - self.sandboxYaw)
+                    let smoothedPitch = self.sandboxPitch + alpha * (rawPitch - self.sandboxPitch)
+                    let smoothedRoll = self.sandboxRoll + alpha * (rawRoll - self.sandboxRoll)
+                    
+                    data.yaw = smoothedYaw
+                    data.pitch = smoothedPitch
+                    data.roll = smoothedRoll
+                    
+                    DispatchQueue.main.async {
+                        self.sandboxYaw = smoothedYaw
+                        self.sandboxPitch = smoothedPitch
+                        self.sandboxRoll = smoothedRoll
+                        self.liveFaceData = data
+                        self.activeCameraLabel = "Camera Active (Tracking User)"
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        self.liveFaceData = FaceWireframeData()
+                        self.activeCameraLabel = "Camera Active (Searching...)"
+                    }
+                }
+            }
+        }
+        
+        cameraManager.checkPermission()
+        cameraManager.startCapture()
+    }
+    
+    private func stopSandboxCamera() {
+        cameraManager.stopCapture()
+        cameraManager.onFrameCaptured = nil
+        liveFaceData = FaceWireframeData()
+    }
+    
+    private func startRotationTimer() {
+        stopRotationTimer()
+        guard autoRotate else { return }
+        rotationTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            let elapsed = Date().timeIntervalSince1970
+            self.sandboxYaw = sin(elapsed * 1.0) * 0.4
+            self.sandboxPitch = cos(elapsed * 1.5) * 0.2
+            self.sandboxRoll = sin(elapsed * 0.8) * 0.15
+        }
+    }
+    
+    private func stopRotationTimer() {
+        rotationTimer?.invalidate()
+        rotationTimer = nil
     }
 }

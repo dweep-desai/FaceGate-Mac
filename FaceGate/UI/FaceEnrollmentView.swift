@@ -12,6 +12,9 @@ struct FaceEnrollmentView: View {
     /// Whether this is shown in settings (allows cancel) vs onboarding (allows skip).
     var isInSettings: Bool = false
 
+    /// The name of the profile being registered.
+    var profileName: String = "Primary Face"
+
     @State private var cameraAuthorization: AVAuthorizationStatus = .notDetermined
 
     private var staticStatusMessage: String {
@@ -152,13 +155,13 @@ struct FaceEnrollmentView: View {
         case .authorized:
             enrollmentManager.camera.permissionGranted = true
             enrollmentManager.camera.error = nil
-            enrollmentManager.startEnrollment()
+            enrollmentManager.startEnrollment(name: profileName)
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { [weak enrollmentManager] granted in
                 DispatchQueue.main.async {
                     guard granted, let manager = enrollmentManager else { return }
                     manager.camera.permissionGranted = true
-                    manager.startEnrollment()
+                    manager.startEnrollment(name: profileName)
                 }
             }
         case .denied, .restricted:
@@ -259,7 +262,7 @@ struct FaceEnrollmentView: View {
             case .capturing:
                 VStack(spacing: 8) {
                     primaryButton("Recapture") {
-                        enrollmentManager.startEnrollment()
+                        enrollmentManager.startEnrollment(name: profileName)
                     }
                     secondaryButton(isInSettings ? "Cancel" : "Skip for Now") {
                         enrollmentManager.cancelEnrollment()
@@ -278,7 +281,7 @@ struct FaceEnrollmentView: View {
             case .failed:
                 VStack(spacing: 10) {
                     primaryButton("Try Again") {
-                        enrollmentManager.startEnrollment()
+                        enrollmentManager.startEnrollment(name: profileName)
                     }
                     secondaryButton(isInSettings ? "Cancel" : "Skip") {
                         onComplete()
