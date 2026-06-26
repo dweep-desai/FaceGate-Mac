@@ -22,6 +22,9 @@ final class FaceEnrollmentManager: ObservableObject {
     private let faceDetector = FaceDetector()
     private let faceEmbedder = FaceEmbedder.shared
     private let dataStore = FaceDataStore.shared
+    
+    /// The name of the profile being enrolled.
+    private var profileName: String = "Primary Face"
 
     /// Collected embeddings during enrollment.
     private var collectedEmbeddings: [[Float]] = []
@@ -74,8 +77,10 @@ final class FaceEnrollmentManager: ObservableObject {
     // MARK: - Enrollment Flow
 
     /// Start the enrollment process: activate camera and begin capturing face frames.
-    func startEnrollment() {
+    /// - Parameter name: The name of the face profile being registered.
+    func startEnrollment(name: String = "Primary Face") {
         guard state != .success else { return }
+        self.profileName = name
         collectedEmbeddings = []
         totalQuality = 0
         capturedCount = 0
@@ -83,11 +88,11 @@ final class FaceEnrollmentManager: ObservableObject {
         state = .capturing
         statusMessage = "Look straight at the camera"
         warningMessage = ""
-
+ 
         cameraManager.onFrameCaptured = { [weak self] pixelBuffer in
             self?.processEnrollmentFrame(pixelBuffer)
         }
-
+ 
         cameraManager.startCapture()
     }
 
@@ -105,7 +110,7 @@ final class FaceEnrollmentManager: ObservableObject {
     /// Re-enroll: delete existing data and start fresh.
     func reEnroll() {
         try? dataStore.delete()
-        startEnrollment()
+        startEnrollment(name: "Primary Face")
     }
 
     // MARK: - Frame Processing
@@ -204,17 +209,20 @@ final class FaceEnrollmentManager: ObservableObject {
         cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
 
-        let enrollment = FaceEnrollment(
-            embeddings: collectedEmbeddings,
+        let newProfile = FaceProfile(
+            id: UUID(),
+            name: profileName,
             enrolledDate: Date(),
+            embeddings: collectedEmbeddings,
             averageQuality: totalQuality / Float(collectedEmbeddings.count)
         )
 
         do {
-            try dataStore.save(enrollment)
+            try dataStore.addProfile(newProfile)
 
             // Enable face unlock by default after successful enrollment.
             UserDefaults.standard.set(true, forKey: FGConstants.faceUnlockEnabledKey)
+            UserDefaults.standard.set(true, forKey: FGConstants.faceEnrolledKey)
 
             state = .success
             statusMessage = "Face enrolled successfully!"
@@ -223,6 +231,36 @@ final class FaceEnrollmentManager: ObservableObject {
             statusMessage = "Enrollment failed"
         }
     }
+
+    #if DEBUG
+    /// Simulates a mock face enrollment for local testing when a camera is not available.
+    /// Generates randomized embeddings that are distinct from each other.
+    func simulateMockEnrollment(name: String) throws {
+        var mockEmbeddings: [[Float]] = []
+        for _ in 0..<FGConstants.enrollmentFrameCount {
+            var vector = [Float](repeating: 0, count: 512)
+            for i in 0..<512 {
+                vector[i] = Float.random(in: -1.0...1.0)
+            }
+            vector = VectorMath.normalize(vector)
+            mockEmbeddings.append(vector)
+        }
+        
+        let newProfile = FaceProfile(
+            id: UUID(),
+            name: name,
+            enrolledDate: Date(),
+            embeddings: mockEmbeddings,
+            averageQuality: 0.95
+        )
+        
+        try dataStore.addProfile(newProfile)
+        
+        // Update UserDefaults metadata
+        UserDefaults.standard.set(true, forKey: FGConstants.faceEnrolledKey)
+        UserDefaults.standard.set(true, forKey: FGConstants.faceUnlockEnabledKey)
+    }
+    #endif
 
     private func updateVisualizerData(from face: VNFaceObservation) {
         var data = FaceWireframeData()
