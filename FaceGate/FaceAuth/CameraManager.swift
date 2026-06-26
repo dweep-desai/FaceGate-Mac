@@ -31,6 +31,9 @@ final class CameraManager: NSObject, ObservableObject {
 
     /// Brightness level captured just before the camera turns on, restored when it stops.
     private var savedBrightness: Float? = nil
+    
+    /// Tracks if capture was requested, to prevent starting if stopped during a permission prompt.
+    private var isCaptureRequested: Bool = false
 
     override init() {
         super.init()
@@ -39,6 +42,7 @@ final class CameraManager: NSObject, ObservableObject {
     // MARK: - Permission
 
     func checkPermission() {
+        isCaptureRequested = true
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         switch status {
         case .authorized:
@@ -52,7 +56,9 @@ final class CameraManager: NSObject, ObservableObject {
                     self?.permissionGranted = granted
                     if granted {
                         self?.error = nil
-                        self?.startCapture()
+                        if self?.isCaptureRequested == true {
+                            self?.startCapture()
+                        }
                     } else {
                         self?.error = .permissionDenied
                     }
@@ -173,6 +179,7 @@ final class CameraManager: NSObject, ObservableObject {
     // MARK: - Start / Stop
 
     func startCapture() {
+        isCaptureRequested = true
         guard !captureSession.isRunning else { return }
 
         if captureSession.inputs.isEmpty {
@@ -193,6 +200,7 @@ final class CameraManager: NSObject, ObservableObject {
     }
 
     func stopCapture() {
+        isCaptureRequested = false
         guard captureSession.isRunning else { return }
 
         // Capture brightness value before the async block so it survives even if

@@ -109,7 +109,7 @@ final class InstalledAppsScanner {
         }
     }
 
-    private func createDiscoveredApp(from appURL: URL) -> DiscoveredApp? {
+    func createDiscoveredApp(from appURL: URL) -> DiscoveredApp? {
         guard let bundle = Bundle(url: appURL),
               let bundleIdentifier = bundle.bundleIdentifier else {
             return nil
@@ -119,10 +119,7 @@ final class InstalledAppsScanner {
             ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
             ?? appURL.deletingPathExtension().lastPathComponent
 
-        // Resize the icon to 128x128 points. Setting the size directly preserves the internal multi-resolution
-        // representations much better than lockFocus, which produces a 1x non-retina bitmap.
         let fullIcon = NSWorkspace.shared.icon(forFile: appURL.path)
-        fullIcon.size = NSSize(width: 128, height: 128)
 
         return DiscoveredApp(
             bundleIdentifier: bundleIdentifier,

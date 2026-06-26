@@ -245,6 +245,7 @@ struct SetupView: View {
 
             AppPickerView()
                 .frame(maxHeight: .infinity)
+                .padding(.horizontal, 40)
 
             HStack(spacing: 12) {
                 Button("Back") { currentStep = .setPassword }

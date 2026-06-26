@@ -30,6 +30,9 @@ enum FGConstants {
     /// Key: whether Touch ID is enabled as a fallback.
     static let touchIDEnabledKey = "touchIDEnabled"
 
+    /// Key: default primary authentication method ("face", "touchid", "password")
+    static let primaryAuthOptionKey = "primaryAuthOption"
+
     /// Key: whether the user has enrolled their face.
     static let faceEnrolledKey = "faceEnrolled"
 

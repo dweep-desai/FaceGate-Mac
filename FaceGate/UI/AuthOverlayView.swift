@@ -222,18 +222,24 @@ struct AuthOverlayView: View {
             .animation(.easeInOut(duration: 0.2), value: authManager.authState)
         }
         .onAppear {
-            // Auto-start face unlock if available.
-            if authManager.isFaceUnlockAvailable && !faceAuthStarted {
+            let primaryAuthOption = UserDefaults.standard.string(forKey: FGConstants.primaryAuthOptionKey) ?? "face"
+
+            if primaryAuthOption == "password" {
+                showPasswordAuth()
+            } else if primaryAuthOption == "touchid" && TouchIDAuth.shared.canUse {
+                authenticateWithTouchID()
+            } else if authManager.isFaceUnlockAvailable && !faceAuthStarted {
+                // Auto-start face unlock if available and preferred (or as fallback to TouchID).
                 faceAuthStarted = true
                 authManager.authenticateWithFace { success in
                     if success {
                         // Small delay for visual feedback before dismissing.
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                guard !didAuthenticate else { return }
-                                didAuthenticate = true
-                                onAuthenticated()
-                                authManager.resetAttempts()
-                            }
+                            guard !didAuthenticate else { return }
+                            didAuthenticate = true
+                            onAuthenticated()
+                            authManager.resetAttempts()
+                        }
                     } else {
                         withAnimation {
                             showFallbacks = true

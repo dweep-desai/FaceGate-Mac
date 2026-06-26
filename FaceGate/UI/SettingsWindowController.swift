@@ -21,6 +21,11 @@ class SettingsWindow: NSWindow {
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private static var shared: SettingsWindowController?
 
+    /// Returns true if the settings window is currently open and visible.
+    static var isVisible: Bool {
+        return shared?.window?.isVisible == true
+    }
+
     /// Show the settings window, optionally jumping to a specific tab.
     static func show(tab: SettingsTab? = nil) {
         if let tab {
@@ -69,7 +74,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.setFrameAutosaveName("FaceGateSettingsWindow")
         window.minSize = NSSize(width: 700, height: 500)
         window.collectionBehavior = [.moveToActiveSpace, .fullScreenPrimary]
-        window.center()
+        
+        if let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) {
+            let x = screen.frame.midX - window.frame.width / 2
+            let y = screen.frame.midY - window.frame.height / 2
+            window.setFrameOrigin(NSPoint(x: x, y: y))
+        } else {
+            window.center()
+        }
+        
         window.delegate = self
         window.isReleasedWhenClosed = false
 

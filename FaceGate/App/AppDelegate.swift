@@ -164,8 +164,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         SettingsWindowController.show()
     }
 
+    @MainActor
     @objc private func openSettingsWindow() {
         closeMenuBarWindow()
+
+        if SettingsWindowController.isVisible {
+            SettingsWindowController.show()
+            return
+        }
 
         ActionAuthWindow.show(reason: "FaceGate Settings") {
             Task { @MainActor in
@@ -220,7 +226,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.isMovableByWindowBackground = true
         window.level = .floating
         window.contentView = NSHostingView(rootView: setupView)
-        window.center()
+        if let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) {
+            let x = screen.frame.midX - window.frame.width / 2
+            let y = screen.frame.midY - window.frame.height / 2
+            window.setFrameOrigin(NSPoint(x: x, y: y))
+        } else {
+            window.center()
+        }
+        
         window.isReleasedWhenClosed = false
         
         window.orderFrontRegardless()
