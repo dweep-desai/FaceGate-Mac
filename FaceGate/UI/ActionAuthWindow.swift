@@ -37,12 +37,28 @@ final class ActionAuthWindow: NSPanel {
                 onCancelled?()
             }
         )
-        
         activeWindow = panel
-        panel.center()
         panel.orderFrontRegardless()
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        
+        // Ensure the window is perfectly centered on the screen containing the mouse,
+        // done asynchronously so NSHostingController has time to calculate its intrinsic size.
+        DispatchQueue.main.async {
+            panel.layoutIfNeeded()
+            if let screen = NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }) ?? NSScreen.main {
+                let screenRect = screen.visibleFrame
+                let newRect = NSRect(
+                    x: screenRect.midX - panel.frame.width / 2,
+                    y: screenRect.midY - panel.frame.height / 2,
+                    width: panel.frame.width,
+                    height: panel.frame.height
+                )
+                panel.setFrame(newRect, display: true)
+            } else {
+                panel.center()
+            }
+        }
     }
 
     init(

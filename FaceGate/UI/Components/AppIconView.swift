@@ -26,6 +26,8 @@ struct AppIconView: View {
             if let icon = icon {
                 Image(nsImage: icon)
                     .resizable()
+                    .interpolation(.high)
+                    .antialiased(true)
                     .aspectRatio(contentMode: .fit)
             } else {
                 Image(systemName: "app.fill")

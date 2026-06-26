@@ -64,32 +64,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     override func showWindow(_ sender: Any?) {
         super.showWindow(sender)
         window?.makeKeyAndOrderFront(nil)
-        
-        // FaceGate runs as an accessory (menu bar app), so we need to enter regular activation policy
-        AppActivationPolicy.enter()
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        AppActivationPolicy.leave()
-        Self.shared = nil
-    }
-}
-
-@MainActor
-enum AppActivationPolicy {
-    private static var count = 0
-
-    static func enter() {
-        count += 1
-        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    static func leave() {
-        count = max(0, count - 1)
-        guard count == 0 else { return }
-        Task { @MainActor in
-            NSApp.setActivationPolicy(.accessory)
-        }
+    func windowWillClose(_ notification: Notification) {
+        Self.shared = nil
     }
 }

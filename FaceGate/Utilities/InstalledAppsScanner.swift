@@ -54,9 +54,29 @@ final class InstalledAppsScanner {
 
     /// Convert a DiscoveredApp into a LockedApp for persistence.
     func toLockedApp(_ discovered: DiscoveredApp, isLocked: Bool = true) -> LockedApp {
-        let iconData = discovered.icon.tiffRepresentation.flatMap {
-            NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:])
-        }
+        // Generate a beautifully sharp 128x128 @2x (256x256 pixels) PNG for persistence.
+        let targetSize = NSSize(width: 128, height: 128)
+        let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 256,
+            pixelsHigh: 256,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        )!
+        rep.size = targetSize
+        
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        // Draw the full icon. AppKit automatically selects the @2x vector/bitmap representation from the NSImage.
+        discovered.icon.draw(in: NSRect(origin: .zero, size: targetSize), from: NSRect(origin: .zero, size: discovered.icon.size), operation: .copy, fraction: 1.0)
+        NSGraphicsContext.restoreGraphicsState()
+        
+        let iconData = rep.representation(using: .png, properties: [:])
 
         return LockedApp(
             bundleIdentifier: discovered.bundleIdentifier,
@@ -99,19 +119,15 @@ final class InstalledAppsScanner {
             ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
             ?? appURL.deletingPathExtension().lastPathComponent
 
-        // Downscale to a single 64x64 thumbnail to avoid holding all .icns sizes (~5-8 MB per app).
+        // Resize the icon to 128x128 points. Setting the size directly preserves the internal multi-resolution
+        // representations much better than lockFocus, which produces a 1x non-retina bitmap.
         let fullIcon = NSWorkspace.shared.icon(forFile: appURL.path)
-        let thumbnail = NSImage(size: NSSize(width: 64, height: 64))
-        thumbnail.lockFocus()
-        fullIcon.draw(in: NSRect(x: 0, y: 0, width: 64, height: 64),
-                      from: NSRect(x: 0, y: 0, width: fullIcon.size.width, height: fullIcon.size.height),
-                      operation: .copy, fraction: 1.0)
-        thumbnail.unlockFocus()
+        fullIcon.size = NSSize(width: 128, height: 128)
 
         return DiscoveredApp(
             bundleIdentifier: bundleIdentifier,
             displayName: displayName,
-            icon: thumbnail,
+            icon: fullIcon,
             path: appURL
         )
     }

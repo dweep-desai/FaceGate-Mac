@@ -10,12 +10,8 @@ struct FaceGateApp: App {
     @State private var showSetup = false
 
     var body: some Scene {
-        // Menu bar extra — the primary UI.
-        MenuBarExtra {
-            MenuBarView()
-        } label: {
-            Image(FGConstants.menuBarIcon)
+        Settings {
+            EmptyView()
         }
-        .menuBarExtraStyle(.window)
     }
 }

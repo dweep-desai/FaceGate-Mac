@@ -1,56 +1,89 @@
 import SwiftUI
 import Sparkle
 
-/// The menu bar popover/dropdown content view.
-/// Shows locked apps, quick controls, and access to settings.
-struct MenuBarView: View {
-    @ObservedObject var lockedAppsManager = LockedAppsManager.shared
+/// Header for the native NSMenu.
+struct MenuHeaderView: View {
     @ObservedObject var appMonitor = AppMonitor.shared
+    unowned let builder: MenuBuilder
+    
+    // Subscribe to menu state updates
+    @State private var id = UUID()
+    
+    private var statusColor: Color {
+        if builder.isProtectionPaused { return .orange }
+        return appMonitor.isMonitoring ? .green : .red
+    }
+    
+    private var statusText: String {
+        if builder.isProtectionPaused { return "Paused" }
+        return appMonitor.isMonitoring ? "Active" : "Inactive"
+    }
+    
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            if let icon = NSImage(named: NSImage.applicationIconName) {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .antialiased(true)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 28, height: 28)
+                    .scaleEffect(1.15) // Optically compensate for the native macOS icon's internal transparent padding
+            } else {
+                Image(systemName: "faceid")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 28, height: 28)
+            }
+            
+            Text("FaceGate")
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+            
+            Spacer()
+            
+            HStack(alignment: .center, spacing: 5) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 6, height: 6)
+                Text(statusText)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .offset(y: 0.5) // Optical alignment for the tiny text caps relative to the bold 15pt title
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .id(id)
+        .onReceive(NotificationCenter.default.publisher(for: .menuStateDidChange)) { _ in
+            id = UUID()
+        }
+        .onAppear {
+            if !UserDefaults.standard.bool(forKey: FGConstants.setupCompletedKey) {
+                NotificationCenter.default.post(name: .openSetup, object: nil)
+            } else if !appMonitor.isMonitoring {
+                appMonitor.startMonitoring()
+            }
+        }
+    }
+}
+
+/// Locked apps list for the native NSMenu.
+struct MenuLockedAppsView: View {
+    @ObservedObject var lockedAppsManager = LockedAppsManager.shared
     @ObservedObject var sessionManager = SessionManager.shared
-
-    @State private var showSettings = false
-    @State private var isTemporarilyDisabled = false
-    @State private var disableTimeRemaining: TimeInterval = 0
-    @State private var disableTimer: Timer?
-
+    unowned let builder: MenuBuilder
+    
+    @State private var id = UUID()
+    
     private var sortedLockedApps: [LockedApp] {
         lockedAppsManager.lockedApps.sorted {
             $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
         }
     }
-
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header.
-            HStack {
-                Image(nsImage: NSApplication.shared.applicationIconImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 16, height: 16)
-
-                Text("FaceGate")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-
-                Spacer()
-
-                // Status indicator.
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(statusColor)
-                        .frame(width: 6, height: 6)
-                    Text(statusText)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-
-            Divider()
-
-            // Locked apps section.
+        Group {
             if lockedAppsManager.lockedApps.isEmpty {
-                Spacer()
                 VStack(spacing: 8) {
                     Image(systemName: "lock.open")
                         .font(.system(size: 20))
@@ -63,186 +96,32 @@ struct MenuBarView: View {
                         .foregroundColor(.secondary.opacity(0.7))
                 }
                 .frame(maxWidth: .infinity)
-                Spacer()
+                .frame(height: 100)
             } else {
+                let appCount = sortedLockedApps.count
+                let maxVisibleApps = 4
+                let visibleCount = min(appCount, maxVisibleApps)
+                let rowHeight: CGFloat = 40
+                let spacing: CGFloat = 1
+                let scrollHeight = CGFloat(visibleCount) * rowHeight + CGFloat(max(0, visibleCount - 1)) * spacing
+                
                 ScrollView {
-                    VStack(spacing: 1) {
+                    VStack(spacing: spacing) {
                         ForEach(sortedLockedApps) { app in
                             LockedAppRow(
                                 app: app,
-                                hasActiveSession: isTemporarilyDisabled || sessionManager.hasActiveSession(for: app.bundleIdentifier)
+                                hasActiveSession: builder.isProtectionPaused || sessionManager.hasActiveSession(for: app.bundleIdentifier)
                             )
                         }
                     }
                 }
-                .frame(maxHeight: .infinity)
-            }
-
-            Divider()
-
-            // Quick actions.
-            VStack(spacing: 2) {
-                // Temporarily Disable.
-                MenuButton(
-                    icon: isTemporarilyDisabled ? "play.circle" : "pause.circle",
-                    title: isTemporarilyDisabled ? "Resume Protection (\(formattedTimeRemaining))" : "Disable for 5 min",
-                    action: toggleTemporaryDisable
-                )
-
-                // Re-lock all.
-                MenuButton(
-                    icon: "lock.fill",
-                    title: "Re-lock All Apps",
-                    action: relockAllApps
-                )
-
-                Divider()
-                    .padding(.vertical, 2)
-
-                // Check for Updates.
-                MenuButton(
-                    icon: "arrow.down.circle",
-                    title: "Check for Updates",
-                    action: checkForUpdates
-                )
-
-                Divider()
-                    .padding(.vertical, 2)
-
-                // Settings.
-                MenuButton(
-                    icon: "gearshape.fill",
-                    title: "Settings",
-                    action: { openSettings() }
-                )
-
-                // Quit (requires auth unless settings is open).
-                MenuButton(
-                    icon: "xmark.circle",
-                    title: "Quit FaceGate",
-                    isDestructive: true,
-                    action: { quitApplication() }
-                )
-            }
-            .padding(.vertical, 4)
-        }
-        .frame(width: 280, height: 350)
-        .onAppear {
-            checkTemporaryDisable()
-            // If setup was never finished, open the Setup Wizard immediately.
-            if !UserDefaults.standard.bool(forKey: FGConstants.setupCompletedKey) {
-                NotificationCenter.default.post(name: .openSetup, object: nil)
-            } else if !appMonitor.isMonitoring {
-                // Failsafe: start monitoring if it somehow got stopped
-                appMonitor.startMonitoring()
+                .frame(height: scrollHeight)
             }
         }
-    }
-
-    // MARK: - Computed
-
-    private var statusColor: Color {
-        if isTemporarilyDisabled { return .orange }
-        return appMonitor.isMonitoring ? .green : .red
-    }
-
-    private var statusText: String {
-        if isTemporarilyDisabled { return "Paused" }
-        return appMonitor.isMonitoring ? "Active" : "Inactive"
-    }
-
-    private var formattedTimeRemaining: String {
-        let minutes = Int(disableTimeRemaining) / 60
-        let seconds = Int(disableTimeRemaining) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-
-    // MARK: - Actions
-
-    private func toggleTemporaryDisable() {
-        if isTemporarilyDisabled {
-            // Re-enable protection.
-            UserDefaults.standard.set(false, forKey: FGConstants.protectionDisabledKey)
-            UserDefaults.standard.removeObject(forKey: FGConstants.protectionDisableExpiryKey)
-            isTemporarilyDisabled = false
-            disableTimer?.invalidate()
-            sessionManager.revokeAllSessions()
-        } else {
-            // Disable for 5 minutes.
-            ActionAuthWindow.show(reason: "Disable Protection") {
-                DispatchQueue.main.async {
-                    let expiry = Date().addingTimeInterval(300)
-                    UserDefaults.standard.set(true, forKey: FGConstants.protectionDisabledKey)
-                    UserDefaults.standard.set(expiry, forKey: FGConstants.protectionDisableExpiryKey)
-                    self.isTemporarilyDisabled = true
-                    self.disableTimeRemaining = 300
-                    self.startDisableCountdown()
-                }
-            }
-        }
-    }
-
-    private func relockAllApps() {
-        sessionManager.revokeAllSessions()
-        if isTemporarilyDisabled {
-            UserDefaults.standard.set(false, forKey: FGConstants.protectionDisabledKey)
-            UserDefaults.standard.removeObject(forKey: FGConstants.protectionDisableExpiryKey)
-            isTemporarilyDisabled = false
-            disableTimer?.invalidate()
-        }
-    }
-
-    private func startDisableCountdown() {
-        disableTimer?.invalidate()
-        disableTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            disableTimeRemaining -= 1
-            if disableTimeRemaining <= 0 {
-                isTemporarilyDisabled = false
-                UserDefaults.standard.set(false, forKey: FGConstants.protectionDisabledKey)
-                disableTimer?.invalidate()
-                sessionManager.revokeAllSessions()
-            }
-        }
-    }
-
-    private func checkTemporaryDisable() {
-        if UserDefaults.standard.bool(forKey: FGConstants.protectionDisabledKey),
-           let expiry = UserDefaults.standard.object(forKey: FGConstants.protectionDisableExpiryKey) as? Date {
-            let remaining = expiry.timeIntervalSinceNow
-            if remaining > 0 {
-                isTemporarilyDisabled = true
-                disableTimeRemaining = remaining
-                startDisableCountdown()
-            } else {
-                UserDefaults.standard.set(false, forKey: FGConstants.protectionDisabledKey)
-                UserDefaults.standard.removeObject(forKey: FGConstants.protectionDisableExpiryKey)
-                isTemporarilyDisabled = false
-                sessionManager.revokeAllSessions()
-            }
-        } else {
-            isTemporarilyDisabled = false
-        }
-    }
-
-    private func checkForUpdates() {
-        AppDelegate.shared?.updaterController?.updater.checkForUpdates()
-    }
-
-    private func openSettings() {
-        // Post a notification to open the settings window.
-        NotificationCenter.default.post(name: .openSettings, object: nil)
-    }
-
-    private func quitApplication() {
-        let appDelegate = AppDelegate.shared
-        let isSettingsOpen = appDelegate?.isSettingsWindowVisible ?? false
-        if isSettingsOpen {
-            NSApplication.shared.terminate(nil)
-        } else {
-            ActionAuthWindow.show(reason: "Quit FaceGate") {
-                appDelegate?.isAuthorizedToQuit = true
-                NSApplication.shared.terminate(nil)
-            }
+        .padding(.bottom, 4)
+        .id(id)
+        .onReceive(NotificationCenter.default.publisher(for: .menuStateDidChange)) { _ in
+            id = UUID()
         }
     }
 }
@@ -315,44 +194,4 @@ private struct LockToggleButton: View {
             }
         }
     }
-}
-
-// MARK: - Menu Button
-
-private struct MenuButton: View {
-    let icon: String
-    let title: String
-    var isDestructive: Bool = false
-    let action: () -> Void
-
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 12))
-                    .frame(width: 16)
-                    .foregroundColor(isDestructive ? .red.opacity(0.8) : .secondary)
-                Text(title)
-                    .font(.system(size: 12))
-                    .foregroundColor(isDestructive ? .red.opacity(0.8) : .primary)
-                Spacer()
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .background(isHovered ? Color(nsColor: .controlBackgroundColor) : Color.clear)
-            .onHover { hovering in
-                isHovered = hovering
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Notification Extension
-
-extension Notification.Name {
-    static let openSettings = Notification.Name("com.dweep.FaceGate.openSettings")
-    static let openSetup = Notification.Name("com.dweep.FaceGate.openSetup")
 }

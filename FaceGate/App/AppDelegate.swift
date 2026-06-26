@@ -13,6 +13,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var setupWindow: NSWindow?
     private(set) var updaterController: SPUStandardUpdaterController?
+    
+    // MARK: - Menu Bar App State
+    private var statusItem: NSStatusItem?
+    private var menuBuilder: MenuBuilder?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Initialize Sparkle updater for automatic updates.
@@ -35,8 +39,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AppLocker.shared.blockApp(bundleIdentifier: bundleId, runningApp: runningApp)
         }
 
-        // Initialize as accessory to let SwiftUI's MenuBarExtra initialize first.
+        // Initialize as accessory so we don't show in the Dock.
         NSApp.setActivationPolicy(.accessory)
+        
+        // Set up the custom menu bar item and popover panel
+        setupMenuBarItem()
 
         // Start monitoring if setup is complete, otherwise open setup after a delay.
         if UserDefaults.standard.bool(forKey: FGConstants.setupCompletedKey) {
@@ -142,6 +149,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Settings Window
 
     private func closeMenuBarWindow() {
+        statusItem?.menu?.cancelTracking()
+        
         for window in NSApp.windows {
             let className = String(describing: type(of: window))
             if className.contains("StatusItem") || className.contains("MenuWindow") || (window.title.isEmpty && window.isVisible && className.contains("Window")) {
@@ -150,11 +159,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @MainActor
+    @objc private func showSettingsWindow() {
+        SettingsWindowController.show()
+    }
+
     @objc private func openSettingsWindow() {
         closeMenuBarWindow()
 
         ActionAuthWindow.show(reason: "FaceGate Settings") {
-            SettingsWindowController.show()
+            Task { @MainActor in
+                SettingsWindowController.show()
+            }
         }
     }
 
@@ -235,5 +251,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             print("[FaceGate] Failed to sync uninstall protection on launch: \(error)")
         }
+    }
+    
+    // MARK: - Custom Menu Bar
+    
+    @MainActor
+    private func setupMenuBarItem() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = statusItem?.button {
+            let icon = NSImage(named: FGConstants.menuBarIcon)
+            icon?.isTemplate = true
+            button.image = icon
+        }
+        
+        let builder = MenuBuilder()
+        self.menuBuilder = builder
+        statusItem?.menu = builder.buildMenu()
     }
 }
