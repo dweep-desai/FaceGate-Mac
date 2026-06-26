@@ -170,7 +170,7 @@ struct AuthOverlayView: View {
                             .transition(.opacity)
                     } else {
                         VStack(spacing: 12) {
-                            Text("— or authenticate with —")
+                            Text("- or authenticate with -")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.white.opacity(0.4))
                             
@@ -179,8 +179,16 @@ struct AuthOverlayView: View {
                                     if authManager.isFaceUnlockAvailable {
                                         smallFallbackButton(icon: "faceid", label: "Face ID") {
                                             authManager.stopTouchIDAuth()
-                                            showFallbacks = false
-                                            startFaceUnlockProcess()
+                                            
+                                            // Delay UI changes to allow the Touch ID system prompt to fully dismiss.
+                                            // This prevents overlapping system security prompts (Touch ID vs Keychain access)
+                                            // and avoids a SwiftUI abort() crash during the window transition.
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                                withAnimation {
+                                                    showFallbacks = false
+                                                }
+                                                startFaceUnlockProcess()
+                                            }
                                         }
                                     }
                                 } else {
@@ -560,7 +568,7 @@ struct AuthOverlayView: View {
 
             // Dynamic fallback links
             VStack(spacing: 12) {
-                Text("— or authenticate with —")
+                Text("- or authenticate with -")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.white.opacity(0.4))
                     .padding(.top, 8)
@@ -598,8 +606,12 @@ struct AuthOverlayView: View {
         }
         authManager.authenticateWithTouchID(appName: appName) { success in
             if !success {
-                withAnimation {
-                    showFallbacks = true
+                // Defer state update to allow the Touch ID system prompt to fully dismiss
+                // and avoid a SwiftUI abort() crash during the window transition.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    withAnimation {
+                        showFallbacks = true
+                    }
                 }
             }
         }
@@ -608,16 +620,12 @@ struct AuthOverlayView: View {
     private func showPasswordAuth() {
         authManager.stopFaceAuth()
         authManager.stopTouchIDAuth()
-        NSApp.activate(ignoringOtherApps: true)
-        withAnimation {
-            showPasswordField = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            isPasswordFocused = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            if !isPasswordFocused {
-                isPasswordFocused = true
+        
+        // Delay UI changes to allow the Touch ID system prompt to fully dismiss.
+        // This prevents a SwiftUI abort() crash during the window transition.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            withAnimation {
+                showPasswordField = true
             }
         }
     }

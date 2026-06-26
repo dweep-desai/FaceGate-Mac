@@ -57,7 +57,7 @@ final class FaceEmbedder {
             }
         }
 
-        print("[FaceEmbedder] No ML model found in bundle — using software-based fallback embedder.")
+        print("[FaceEmbedder] No ML model found in bundle - using software-based fallback embedder.")
     }
 
     // MARK: - Embedding Generation

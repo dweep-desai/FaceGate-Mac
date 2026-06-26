@@ -814,11 +814,11 @@ private struct BehaviorSettingsView: View {
                             scheduleManager.refresh()
                         }
 
-                    HStack(spacing: 4) {
+                    HStack {
                         Text("Lock all apps between")
 
                         DatePicker("", selection: $lockStartTime, displayedComponents: .hourAndMinute)
-                            .datePickerStyle(.field)
+                            .datePickerStyle(.stepperField)
                             .labelsHidden()
                             .onChangeCompat(of: lockStartTime) { newValue in
                                 let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
@@ -832,7 +832,7 @@ private struct BehaviorSettingsView: View {
                         Text("and")
 
                         DatePicker("", selection: $lockEndTime, displayedComponents: .hourAndMinute)
-                            .datePickerStyle(.field)
+                            .datePickerStyle(.stepperField)
                             .labelsHidden()
                             .onChangeCompat(of: lockEndTime) { newValue in
                                 let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
@@ -858,7 +858,7 @@ private struct BehaviorSettingsView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
                             .font(.system(size: 12))
-                        Text("Lock and unlock windows overlap. Lock takes priority — unlock will be skipped during the overlap.")
+                        Text("Lock and unlock windows overlap. Lock takes priority - unlock will be skipped during the overlap.")
                             .font(.system(size: 11))
                             .foregroundColor(.orange)
                     }
@@ -875,11 +875,11 @@ private struct BehaviorSettingsView: View {
                             scheduleManager.refresh()
                         }
 
-                    HStack(spacing: 4) {
+                    HStack {
                         Text("Unlock all apps between")
 
                         DatePicker("", selection: $unlockStartTime, displayedComponents: .hourAndMinute)
-                            .datePickerStyle(.field)
+                            .datePickerStyle(.stepperField)
                             .labelsHidden()
                             .onChangeCompat(of: unlockStartTime) { newValue in
                                 let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
@@ -893,7 +893,7 @@ private struct BehaviorSettingsView: View {
                         Text("and")
 
                         DatePicker("", selection: $unlockEndTime, displayedComponents: .hourAndMinute)
-                            .datePickerStyle(.field)
+                            .datePickerStyle(.stepperField)
                             .labelsHidden()
                             .onChangeCompat(of: unlockEndTime) { newValue in
                                 let comps = Calendar.current.dateComponents([.hour, .minute], from: newValue)
@@ -919,7 +919,7 @@ private struct BehaviorSettingsView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
                             .font(.system(size: 12))
-                        Text("Lock and unlock windows overlap. Lock takes priority — unlock will be skipped during the overlap.")
+                        Text("Lock and unlock windows overlap. Lock takes priority - unlock will be skipped during the overlap.")
                             .font(.system(size: 11))
                             .foregroundColor(.orange)
                     }
@@ -942,12 +942,12 @@ private struct BehaviorSettingsView: View {
                 if disableFaceUnlockHours {
                     HStack {
                         DatePicker("Start Time", selection: startTimeBinding, displayedComponents: .hourAndMinute)
-                            .datePickerStyle(.field)
+                            .datePickerStyle(.stepperField)
                         
                         Spacer()
                         
                         DatePicker("End Time", selection: endTimeBinding, displayedComponents: .hourAndMinute)
-                            .datePickerStyle(.field)
+                            .datePickerStyle(.stepperField)
                     }
                     
                     Text("During these hours, App Lock remains active but face recognition is bypassed, forcing password/Touch ID entry.")
@@ -1163,96 +1163,100 @@ private struct BehaviorSettingsView: View {
 
 private struct AboutView: View {
     var body: some View {
-        Form {
-            Section {
-                VStack(spacing: 20) {
-            Spacer()
+        ScrollView {
+            VStack(spacing: 24) {
+                if let appIcon = NSApp.applicationIconImage {
+                    Image(nsImage: appIcon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 96, height: 96)
+                } else {
+                    Image(systemName: "app.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 96, height: 96)
+                        .foregroundColor(.secondary)
+                }
 
-            if let appIcon = NSApp.applicationIconImage {
-                Image(nsImage: appIcon)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 64, height: 64)
-            } else {
-                Image(systemName: "app.fill")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 64, height: 64)
-                    .foregroundColor(.secondary)
-            }
+                VStack(spacing: 6) {
+                    Text("FaceGate")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                    Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0")")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
 
-            VStack(spacing: 4) {
-                Text("FaceGate")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0")")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            }
-
-            Text("A privacy-focused app locker for macOS with face authentication.")
-                .font(.system(size: 13))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 300)
-
-            Divider()
-                .frame(maxWidth: 200)
-
-            VStack(spacing: 8) {
-                Text("⚠️ Security Disclaimer")
-                    .font(.system(size: 12, weight: .semibold))
-
-                Text("Face Unlock is a convenience feature using the built-in camera. It is NOT equivalent to Apple's Face ID and may be susceptible to photo-based spoofing. For maximum security, use Touch ID or the app password.")
-                    .font(.system(size: 11))
+                Text("A privacy-focused app locker for macOS with face authentication.")
+                    .font(.system(size: 13))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: 350)
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.orange.opacity(0.08))
-            )
+                    .frame(maxWidth: 320)
 
-            Link(destination: URL(string: "https://github.com/dweep-desai/FaceGate-Mac")!) {
-                HStack(spacing: 6) {
-                    Image("GitHubIcon")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 18, height: 18)
-                    Text("GitHub Repository")
-                        .font(.system(size: 12))
+                Divider()
+                    .frame(maxWidth: 240)
+                    .padding(.vertical, 4)
+
+                VStack(spacing: 8) {
+                    Text("⚠️ Security Disclaimer")
+                        .font(.system(size: 12, weight: .semibold))
+
+                    Text("Face Unlock is a convenience feature using the built-in camera. It is NOT equivalent to Apple's Face ID and may be susceptible to photo-based spoofing. For maximum security, use Touch ID or the app password.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 350)
+                }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.orange.opacity(0.1))
+                )
+                
+                VStack(spacing: 12) {
+                    Link(destination: URL(string: "https://github.com/dweep-desai/FaceGate-Mac")!) {
+                        HStack(spacing: 8) {
+                            Image("GitHubIcon")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 16, height: 16)
+                                // Standard native button color usually applied automatically, or we can use primary
+                                .foregroundColor(.primary)
+                            Text("GitHub Repository")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .frame(width: 200, height: 28)
+                    }
+                    .buttonStyle(.link)
+
+                    Link(destination: URL(string: "https://github.com/sponsors/dweep-desai")!) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "heart.fill")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 14, height: 14)
+                                .foregroundColor(.pink)
+                            Text("Sponsor on GitHub")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .frame(width: 200, height: 28)
+                    }
+                    .buttonStyle(.link)
+                }
+                .padding(.vertical, 4)
+
+                VStack(spacing: 4) {
+                    Text("Open Source - MIT License")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text("© 2026 Dweep Desai")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary.opacity(0.7))
                 }
             }
-
-            Link(destination: URL(string: "https://github.com/sponsors/dweep-desai")!) {
-                HStack(spacing: 6) {
-                    Image(systemName: "heart.fill")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 14, height: 14)
-                        .foregroundColor(.pink)
-                    Text("Sponsor on GitHub")
-                        .font(.system(size: 12))
-                }
-            }
-
-            VStack(spacing: 4) {
-                Text("Open Source — MIT License")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                Text("© 2026 Dweep Desai")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary.opacity(0.7))
-            }
-
-            Spacer()
-                }
-            }
+            .padding(.top, 48)
+            .padding(.bottom, 32)
+            .frame(maxWidth: .infinity)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .contentMargins(.top, 8, for: .scrollContent)
     }
 }
 

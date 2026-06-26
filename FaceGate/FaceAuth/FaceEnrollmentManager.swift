@@ -120,9 +120,9 @@ final class FaceEnrollmentManager: ObservableObject {
             guard results.count == 1 else {
                 DispatchQueue.main.async {
                     if results.isEmpty {
-                        self.warningMessage = "No face detected — look at the camera"
+                        self.warningMessage = "No face detected - look at the camera"
                     } else {
-                        self.warningMessage = "Multiple faces detected — only one face allowed"
+                        self.warningMessage = "Multiple faces detected - only one face allowed"
                     }
                 }
                 return
@@ -138,7 +138,7 @@ final class FaceEnrollmentManager: ObservableObject {
             // Reject low-quality captures.
             guard quality >= FGConstants.minimumCaptureQuality else {
                 DispatchQueue.main.async {
-                    self.warningMessage = "Poor lighting or angle — adjust position"
+                    self.warningMessage = "Poor lighting or angle - adjust position"
                 }
                 return
             }
