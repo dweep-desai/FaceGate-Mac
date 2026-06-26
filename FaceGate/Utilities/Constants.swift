@@ -66,6 +66,15 @@ enum FGConstants {
     /// Key: end minute for disabling face unlock.
     static let faceUnlockDisabledEndMinuteKey = "faceUnlockDisabledEndMinute"
 
+    /// Key: whether the emergency kill shortcut is enabled.
+    static let emergencyKillEnabledKey = "emergencyKillEnabled"
+
+    /// Key: modifier key used for the emergency kill shortcut.
+    static let emergencyKillModifierKey = "emergencyKillModifier"
+
+    /// Key: trigger key used for the emergency kill shortcut.
+    static let emergencyKillTriggerKey = "emergencyKillKey"
+
     // MARK: - App Schedule
 
     /// Key: whether the lock-all-apps schedule is enabled.

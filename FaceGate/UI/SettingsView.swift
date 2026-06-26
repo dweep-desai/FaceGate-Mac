@@ -531,8 +531,9 @@ private struct BehaviorSettingsView: View {
     @State private var uninstallProtection = UserDefaults.standard.bool(forKey: FGConstants.uninstallProtectionKey)
     @State private var isUpdatingUninstallProtection = false
 
-    @AppStorage("emergencyKillModifier") private var emergencyKillModifier = "Command"
-    @AppStorage("emergencyKillKey") private var emergencyKillKey = "`"
+    @AppStorage(FGConstants.emergencyKillEnabledKey) private var emergencyKillEnabled = true
+    @AppStorage(FGConstants.emergencyKillModifierKey) private var emergencyKillModifier = "Command"
+    @AppStorage(FGConstants.emergencyKillTriggerKey) private var emergencyKillKey = "`"
 
     @AppStorage(FGConstants.disableFaceUnlockHoursKey) private var disableFaceUnlockHours = false
     @AppStorage(FGConstants.faceUnlockDisabledStartHourKey) private var startHour = 22
@@ -823,9 +824,20 @@ private struct BehaviorSettingsView: View {
 
             Section {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Emergency Kill Shortcut")
-                        .font(.system(size: 13, weight: .semibold))
+                    HStack {
+                        Text("Emergency Kill Shortcut")
+                            .font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        Toggle(isOn: $emergencyKillEnabled) { EmptyView() }
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                            .accessibilityLabel("Enable Emergency Kill Shortcut")
+                            .onChangeCompat(of: emergencyKillEnabled) { _ in
+                                GlobalHotkeyManager.shared.reRegisterShortcut()
+                            }
+                    }
                     
+                    if emergencyKillEnabled {
                     HStack {
                         Text("Compulsory modifiers:")
                             .font(.system(size: 11))
@@ -878,6 +890,7 @@ private struct BehaviorSettingsView: View {
                     Text("Pressing the shortcut above at any time will instantly quit FaceGate without requiring authentication.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
+                    }
                 }
             } header: {
                 Text("Emergency")
