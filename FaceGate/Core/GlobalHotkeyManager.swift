@@ -51,8 +51,11 @@ final class GlobalHotkeyManager {
             hotKeyRef = nil
         }
         
-        let modifierStr = UserDefaults.standard.string(forKey: "emergencyKillModifier") ?? "Command"
-        let keyStr = UserDefaults.standard.string(forKey: "emergencyKillKey") ?? "`"
+        let isEnabled = UserDefaults.standard.object(forKey: FGConstants.emergencyKillEnabledKey) as? Bool ?? true
+        guard isEnabled else { return }
+        
+        let modifierStr = UserDefaults.standard.string(forKey: FGConstants.emergencyKillModifierKey) ?? "Command"
+        let keyStr = UserDefaults.standard.string(forKey: FGConstants.emergencyKillKeyKey) ?? "`"
         
         // Compulsory modifiers: Ctrl + Option
         var modifiers = UInt32(controlKey | optionKey)
