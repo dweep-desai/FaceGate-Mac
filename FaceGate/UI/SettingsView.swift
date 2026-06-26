@@ -533,7 +533,7 @@ private struct BehaviorSettingsView: View {
 
     @AppStorage(FGConstants.emergencyKillEnabledKey) private var emergencyKillEnabled = true
     @AppStorage(FGConstants.emergencyKillModifierKey) private var emergencyKillModifier = "Command"
-    @AppStorage(FGConstants.emergencyKillKeyKey) private var emergencyKillKey = "`"
+    @AppStorage(FGConstants.emergencyKillTriggerKey) private var emergencyKillKey = "`"
 
     @AppStorage(FGConstants.disableFaceUnlockHoursKey) private var disableFaceUnlockHours = false
     @AppStorage(FGConstants.faceUnlockDisabledStartHourKey) private var startHour = 22

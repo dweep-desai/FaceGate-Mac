@@ -56,7 +56,7 @@ final class GlobalHotkeyManager {
         guard isEnabled else { return }
         
         let modifierStr = UserDefaults.standard.string(forKey: FGConstants.emergencyKillModifierKey) ?? "Command"
-        let keyStr = UserDefaults.standard.string(forKey: FGConstants.emergencyKillKeyKey) ?? "`"
+        let keyStr = UserDefaults.standard.string(forKey: FGConstants.emergencyKillTriggerKey) ?? "`"
         
         // Compulsory modifiers: Ctrl + Option
         var modifiers = UInt32(controlKey | optionKey)

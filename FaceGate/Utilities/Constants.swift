@@ -72,8 +72,8 @@ enum FGConstants {
     /// Key: modifier key used for the emergency kill shortcut.
     static let emergencyKillModifierKey = "emergencyKillModifier"
 
-    /// Key: key code used for the emergency kill shortcut.
-    static let emergencyKillKeyKey = "emergencyKillKey"
+    /// Key: trigger key used for the emergency kill shortcut.
+    static let emergencyKillTriggerKey = "emergencyKillKey"
 
     // MARK: - App Schedule
 
