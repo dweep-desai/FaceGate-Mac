@@ -26,34 +26,17 @@ struct AppPickerView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Search bar.
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                TextField("Search apps…", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(10)
-            .background(Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 8)
+            NativeSearchField(text: $searchText, placeholder: "Search apps")
+                .frame(height: 22)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
 
             Divider()
 
             if isLoading {
                 Spacer()
-                ProgressView("Scanning installed apps…")
+                ProgressView("Scanning installed apps")
                     .progressViewStyle(.circular)
                 Spacer()
             } else if filteredApps.isEmpty {
@@ -172,9 +155,13 @@ private struct AppRow: View {
                     }
                 }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(isHovered ? Color(nsColor: .controlBackgroundColor) : Color.clear)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? Color(nsColor: .selectedControlColor).opacity(0.15) : Color.clear)
+        )
+        .padding(.horizontal, 4)
         .onHover { hovering in
             isHovered = hovering
         }

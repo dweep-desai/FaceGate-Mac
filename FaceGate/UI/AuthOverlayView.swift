@@ -360,7 +360,7 @@ struct AuthOverlayView: View {
                     ProgressView()
                         .controlSize(.small)
                         .colorScheme(.dark)
-                    Text("Authenticating with \(method.displayName)…")
+                    Text("Authenticating with \(method.displayName)")
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.7))
                 }

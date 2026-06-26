@@ -445,7 +445,7 @@ private struct PermissionRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 18))
-                .foregroundColor(.blue)
+                .foregroundColor(icon == "hand.raised.fill" ? .orange : .blue)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {

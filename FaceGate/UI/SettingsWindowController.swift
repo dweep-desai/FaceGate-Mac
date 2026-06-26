@@ -1,6 +1,22 @@
 import AppKit
 import SwiftUI
 
+// MARK: - Custom Window
+class SettingsWindow: NSWindow {
+    private var toolbarObserver: NSKeyValueObservation?
+    
+    override var toolbar: NSToolbar? {
+        didSet {
+            toolbarObserver?.invalidate()
+            toolbarObserver = toolbar?.observe(\.showsBaselineSeparator, options: [.initial, .new]) { toolbar, _ in
+                if toolbar.showsBaselineSeparator {
+                    toolbar.showsBaselineSeparator = false
+                }
+            }
+        }
+    }
+}
+
 @MainActor
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private static var shared: SettingsWindowController?
@@ -19,7 +35,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private init() {
-        let window = NSWindow(
+        let window = SettingsWindow(
             contentRect: NSRect(origin: .zero, size: CGSize(width: 850, height: 620)),
             styleMask: [
                 .titled,

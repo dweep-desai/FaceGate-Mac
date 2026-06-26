@@ -195,7 +195,7 @@ final class FaceEnrollmentManager: ObservableObject {
 
     private func finishEnrollment() {
         state = .processing
-        statusMessage = "Processing face data…"
+        statusMessage = "Processing face data"
         cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
 

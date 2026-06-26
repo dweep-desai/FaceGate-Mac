@@ -124,7 +124,7 @@ private struct SettingsSidebarView: View {
                 Button(action: { showPermissions = true }) {
                     Image(systemName: "hand.raised.fill")
                         .font(.system(size: 14))
-                        .foregroundColor(.blue)
+                        .foregroundColor(.orange)
                         .frame(width: 28, height: 28)
                         .background(Circle().fill(Color(nsColor: .controlBackgroundColor)))
                         .overlay(Circle().strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5))
@@ -150,6 +150,8 @@ private struct SettingsSidebarView: View {
 private struct PermissionsDialogView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var accessibilityGranted = AXIsProcessTrusted()
+    @State private var isResetting = false
+    @State private var resetSuccess = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -165,7 +167,7 @@ private struct PermissionsDialogView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "hand.raised.fill")
                         .font(.system(size: 18))
-                        .foregroundColor(.blue)
+                        .foregroundColor(.orange)
                         .frame(width: 28)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Accessibility")
@@ -182,10 +184,6 @@ private struct PermissionsDialogView: View {
                         Button("Grant") {
                             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
                             _ = AXIsProcessTrustedWithOptions(options)
-                            
-                            // Also open settings to be sure.
-                            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-                            NSWorkspace.shared.open(url)
                         }
                         .controlSize(.small)
                     }
@@ -217,10 +215,52 @@ private struct PermissionsDialogView: View {
                 .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
             }
             
-            Button("Done") {
-                dismiss()
+            HStack(spacing: 16) {
+                if resetSuccess {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small)
+                        Text("Restarting to apply...")
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                } else {
+                    Button(isResetting ? "Resetting..." : "Reset") {
+                        isResetting = true
+                        Task {
+                            let process = Process()
+                            process.launchPath = "/usr/bin/tccutil"
+                            process.arguments = ["reset", "Accessibility", Bundle.main.bundleIdentifier ?? "com.dweep.FaceGate"]
+                            try? process.run()
+                            process.waitUntilExit()
+                            
+                            await MainActor.run {
+                                resetSuccess = true
+                            }
+                            
+                            try? await Task.sleep(nanoseconds: 1_000_000_000)
+                            
+                            await MainActor.run {
+                                let restartProcess = Process()
+                                restartProcess.launchPath = "/usr/bin/open"
+                                restartProcess.arguments = ["-n", Bundle.main.bundlePath]
+                                try? restartProcess.run()
+                                exit(0)
+                            }
+                        }
+                    }
+                    .controlSize(.small)
+                    .buttonStyle(.bordered)
+                    .tint(.red)
+                    .disabled(isResetting)
+                }
+                
+                Spacer()
+                
+                Button("Done") {
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.borderedProminent)
             .padding(.top, 8)
         }
         .padding(24)
@@ -1243,7 +1283,7 @@ struct LockedAppsSettingsView: View {
         VStack(spacing: 12) {
             ProgressView()
                 .controlSize(.regular)
-            Text("Scanning installed apps…")
+            Text("Scanning installed apps")
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
         }
@@ -1335,26 +1375,8 @@ struct LockedAppsSettingsView: View {
             Spacer()
 
             // Search bar
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                TextField("Search…", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 11))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .frame(width: 160)
+            NativeSearchField(text: $searchText, placeholder: "Search")
+                .frame(width: 160, height: 22)
 
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -1364,7 +1386,7 @@ struct LockedAppsSettingsView: View {
             }) {
                 HStack(spacing: 4) {
                     Image(systemName: "plus")
-                    Text("Add Apps…")
+                    Text("Add Apps")
                 }
                 .font(.system(size: 12, weight: .medium))
                 .padding(.horizontal, 10)
@@ -1404,26 +1426,8 @@ struct LockedAppsSettingsView: View {
             Spacer()
 
             // Search bar
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                TextField("Search…", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 11))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color(nsColor: .controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .frame(width: 180)
+            NativeSearchField(text: $searchText, placeholder: "Search")
+                .frame(width: 180, height: 22)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -1558,9 +1562,13 @@ private struct LockedRowView: View {
                     }
                 }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(isHovered ? Color(nsColor: .controlBackgroundColor) : Color.clear)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? Color(nsColor: .selectedControlColor).opacity(0.15) : Color.clear)
+        )
+        .padding(.horizontal, 4)
         .onHover { hovering in
             isHovered = hovering
         }
@@ -1606,9 +1614,13 @@ private struct UnlockedRowView: View {
                     }
                 }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(isHovered ? Color(nsColor: .controlBackgroundColor) : Color.clear)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? Color(nsColor: .selectedControlColor).opacity(0.15) : Color.clear)
+        )
+        .padding(.horizontal, 4)
         .onHover { hovering in
             isHovered = hovering
         }

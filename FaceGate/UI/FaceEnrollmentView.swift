@@ -21,7 +21,7 @@ struct FaceEnrollmentView: View {
         case .capturing:
             return "Follow the prompts on the camera screen"
         case .processing:
-            return "Processing face data…"
+            return "Processing face data"
         case .success:
             return "Face enrolled successfully!"
         case .failed(let message):
@@ -206,7 +206,7 @@ struct FaceEnrollmentView: View {
         VStack(spacing: 12) {
             ProgressView()
                 .scaleEffect(1.5)
-            Text("Processing face data…")
+            Text("Processing face data")
                 .font(.system(size: 13))
                 .foregroundColor(.white.opacity(0.8))
         }

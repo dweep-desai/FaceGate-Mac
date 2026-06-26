@@ -123,7 +123,7 @@ final class FaceAuthManager: ObservableObject {
         frameCount = 0
         authStartTime = Date()
         state = .scanning
-        statusMessage = "Looking for your face…"
+        statusMessage = "Looking for your face"
         warningMessage = ""
         activeChallenge = nil
 
@@ -180,7 +180,7 @@ final class FaceAuthManager: ObservableObject {
             guard observations.count == 1, let face = observations.first else {
                 DispatchQueue.main.async {
                     if observations.isEmpty {
-                        self.statusMessage = "Looking for your face…"
+                        self.statusMessage = "Looking for your face"
                         self.warningMessage = ""
                     } else {
                         self.warningMessage = "Only one face allowed"
@@ -211,7 +211,7 @@ final class FaceAuthManager: ObservableObject {
 
             guard result.isMatch else {
                 DispatchQueue.main.async {
-                    self.statusMessage = "Looking for your face…"
+                    self.statusMessage = "Looking for your face"
                 }
                 return
             }

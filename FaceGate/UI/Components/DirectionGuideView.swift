@@ -35,7 +35,7 @@ struct DirectionGuideView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
 
-                Text("Get ready…")
+                Text("Get ready")
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.6))
                 
