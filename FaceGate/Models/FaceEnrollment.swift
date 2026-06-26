@@ -24,6 +24,17 @@ struct FaceEnrollment: Codable {
         case profiles
     }
 
+    init(embeddings: [[Float]], enrolledDate: Date, averageQuality: Float) {
+        let legacyProfile = FaceProfile(
+            id: UUID(),
+            name: "Primary Face",
+            enrolledDate: enrolledDate,
+            embeddings: embeddings,
+            averageQuality: averageQuality
+        )
+        self.profiles = [legacyProfile]
+    }
+
     init(profiles: [FaceProfile]) {
         self.profiles = profiles
     }
@@ -48,6 +59,11 @@ struct FaceEnrollment: Codable {
         } else {
             self.profiles = []
         }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(profiles, forKey: .profiles)
     }
 
     /// Number of valid frames captured during enrollment.

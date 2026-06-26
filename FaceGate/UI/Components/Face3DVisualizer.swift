@@ -111,8 +111,7 @@ public struct HolographicFaceView: View {
                 rightEye.addEllipse(in: CGRect(x: center.x + eyeOffset - 6, y: eyeY - 4, width: 12, height: 8))
                 context.stroke(rightEye, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
             }
-            .stroke(Color.cyan, lineWidth: 1)
-            .shadow(color: .cyan.opacity(0.5), radius: 6)
+            .shadow(color: Color.cyan.opacity(0.5), radius: 6)
             // Apply 3D perspective to simulate physical head orientation
             .rotation3DEffect(.radians(-faceData.yaw), axis: (x: 0.0, y: 1.0, z: 0.0))
             .rotation3DEffect(.radians(faceData.pitch), axis: (x: 1.0, y: 0.0, z: 0.0))

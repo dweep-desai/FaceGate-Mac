@@ -56,6 +56,47 @@ final class FaceDataStore {
         UserDefaults.standard.set(false, forKey: FGConstants.faceUnlockEnabledKey)
     }
 
+    /// Delete a specific face profile by its unique ID.
+    /// - Parameter id: The UUID of the profile to remove.
+    /// - Throws: If the updated enrollment cannot be saved or files deleted.
+    func deleteProfile(id: UUID) throws {
+        guard var enrollment = load() else { return }
+        enrollment.profiles.removeAll { $0.id == id }
+
+        if enrollment.profiles.isEmpty {
+            try delete()
+        } else {
+            try save(enrollment)
+        }
+    }
+
+    /// Rename an existing face profile.
+    /// - Parameters:
+    ///   - id: The UUID of the profile.
+    ///   - newName: The new user-visible name.
+    /// - Throws: If the file cannot be saved.
+    func renameProfile(id: UUID, newName: String) throws {
+        guard var enrollment = load() else { return }
+        if let idx = enrollment.profiles.firstIndex(where: { $0.id == id }) {
+            enrollment.profiles[idx].name = newName
+            try save(enrollment)
+        }
+    }
+
+    /// Append a new face profile to the existing enrollment, or create one.
+    /// - Parameter profile: The new FaceProfile to add.
+    /// - Throws: If the file cannot be saved.
+    func addProfile(_ profile: FaceProfile) throws {
+        var enrollment: FaceEnrollment
+        if let existing = load() {
+            enrollment = existing
+            enrollment.profiles.append(profile)
+        } else {
+            enrollment = FaceEnrollment(profiles: [profile])
+        }
+        try save(enrollment)
+    }
+
     /// Whether a face enrollment exists on disk.
     var hasEnrollment: Bool {
         FileManager.default.fileExists(atPath: fileURL.path)

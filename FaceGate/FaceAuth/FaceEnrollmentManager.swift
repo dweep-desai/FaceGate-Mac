@@ -1,6 +1,8 @@
 import Combine
 import Foundation
 import CoreVideo
+import Vision
+
 
 /// Manages the face enrollment workflow: capturing multiple reference frames,
 /// validating quality, generating embeddings, and storing them encrypted.
@@ -11,6 +13,7 @@ final class FaceEnrollmentManager: ObservableObject {
     @Published var currentQuality: Float = 0
     @Published var statusMessage: String = "Position your face in the frame"
     @Published var warningMessage: String = ""
+    @Published var visualizerData = FaceWireframeData()
 
     /// Target number of frames to capture.
     let targetFrameCount = FGConstants.enrollmentFrameCount
@@ -130,6 +133,8 @@ final class FaceEnrollmentManager: ObservableObject {
 
             let (face, quality) = results[0]
 
+            self.updateVisualizerData(from: face)
+
             DispatchQueue.main.async {
                 self.currentQuality = quality
                 self.warningMessage = ""
@@ -216,6 +221,37 @@ final class FaceEnrollmentManager: ObservableObject {
         } catch {
             state = .failed("Failed to save: \(error.localizedDescription)")
             statusMessage = "Enrollment failed"
+        }
+    }
+
+    private func updateVisualizerData(from face: VNFaceObservation) {
+        var data = FaceWireframeData()
+        data.yaw = face.yaw.map { Double(truncating: $0) } ?? 0.0
+        data.roll = face.roll.map { Double(truncating: $0) } ?? 0.0
+        if #available(macOS 14.0, *) {
+            data.pitch = face.pitch.map { Double(truncating: $0) } ?? 0.0
+        }
+        
+        if let landmarks = face.landmarks {
+            if let contour = landmarks.faceContour {
+                data.outlinePoints = contour.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+            }
+            if let nose = landmarks.nose {
+                data.nosePoints = nose.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+            }
+            if let leftEye = landmarks.leftEye {
+                data.leftEyePoints = leftEye.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+            }
+            if let rightEye = landmarks.rightEye {
+                data.rightEyePoints = rightEye.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+            }
+            if let outerLips = landmarks.outerLips {
+                data.lipsPoints = outerLips.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+            }
+        }
+        
+        DispatchQueue.main.async {
+            self.visualizerData = data
         }
     }
 }

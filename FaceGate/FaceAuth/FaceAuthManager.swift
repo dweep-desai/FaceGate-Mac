@@ -1,6 +1,8 @@
 import Combine
 import Foundation
 import CoreVideo
+import Vision
+
 
 /// The main face authentication orchestrator.
 /// Ties together camera capture → face detection → embedding → matching
@@ -10,6 +12,7 @@ final class FaceAuthManager: ObservableObject {
     @Published var state: FaceAuthState = .idle
     @Published var statusMessage: String = ""
     @Published var warningMessage: String = ""
+    @Published var visualizerData = FaceWireframeData()
 
     /// The camera manager — exposed for binding the preview layer.
     let cameraManager = CameraManager()
@@ -76,6 +79,11 @@ final class FaceAuthManager: ObservableObject {
         !isFaceUnlockTemporarilyDisabledByHours()
     }
 
+    /// Get list of currently enrolled face profiles.
+    var enrolledProfiles: [FaceProfile] {
+        dataStore.load()?.profiles ?? []
+    }
+
     /// Checks if face unlock is temporarily disabled based on the current hour/minute settings.
     func isFaceUnlockTemporarilyDisabledByHours() -> Bool {
         guard UserDefaults.standard.bool(forKey: FGConstants.disableFaceUnlockHoursKey) else { return false }
@@ -118,7 +126,7 @@ final class FaceAuthManager: ObservableObject {
             return
         }
 
-        enrolledEmbeddings = enrollment.embeddings
+        enrolledEmbeddings = enrollment.profiles.flatMap { $0.embeddings }
         onResult = completion
         frameCount = 0
         authStartTime = Date()
@@ -193,6 +201,8 @@ final class FaceAuthManager: ObservableObject {
                 self.warningMessage = ""
             }
 
+            self.updateVisualizerData(from: face)
+
             // Crop the face.
             guard let croppedFace = self.faceDetector.cropFace(from: pixelBuffer, observation: face) else {
                 return
@@ -257,6 +267,37 @@ final class FaceAuthManager: ObservableObject {
                     self.statusMessage = challenge.prompt
                 }
             }
+        }
+    }
+
+    private func updateVisualizerData(from face: VNFaceObservation) {
+        var data = FaceWireframeData()
+        data.yaw = face.yaw.map { Double(truncating: $0) } ?? 0.0
+        data.roll = face.roll.map { Double(truncating: $0) } ?? 0.0
+        if #available(macOS 14.0, *) {
+            data.pitch = face.pitch.map { Double(truncating: $0) } ?? 0.0
+        }
+        
+        if let landmarks = face.landmarks {
+            if let contour = landmarks.faceContour {
+                data.outlinePoints = contour.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+            }
+            if let nose = landmarks.nose {
+                data.nosePoints = nose.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+            }
+            if let leftEye = landmarks.leftEye {
+                data.leftEyePoints = leftEye.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+            }
+            if let rightEye = landmarks.rightEye {
+                data.rightEyePoints = rightEye.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+            }
+            if let outerLips = landmarks.outerLips {
+                data.lipsPoints = outerLips.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+            }
+        }
+        
+        DispatchQueue.main.async {
+            self.visualizerData = data
         }
     }
 }
