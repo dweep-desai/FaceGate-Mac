@@ -322,7 +322,7 @@ struct FaceEnrollmentView: View {
                     Spacer()
                     AnimatedDirectionIndicator(
                         icon: indicatorIcon(for: step),
-                        direction: step == .left ? .left : (step == .right ? .right : .tilt)
+                        direction: step == .left ? .left : .right
                     )
                     .padding(8)
                 }
@@ -335,7 +335,6 @@ struct FaceEnrollmentView: View {
         case .straight: return ""
         case .left: return "arrow.left.circle.fill"
         case .right: return "arrow.right.circle.fill"
-        case .tilt: return "arrowshape.turn.up.right.fill"
         }
     }
 }

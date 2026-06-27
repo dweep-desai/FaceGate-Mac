@@ -138,8 +138,8 @@ enum FGConstants {
 
     // MARK: - Face Enrollment
 
-    /// Number of face frames to capture during enrollment (2 for each direction: straight, left, right, tilt).
-    static let enrollmentFrameCount = 8
+    /// Number of face frames to capture during enrollment (3 for each direction: straight, left, right).
+    static let enrollmentFrameCount = 9
 
     /// Minimum face capture quality score (0.0–1.0) for enrollment.
     static let minimumCaptureQuality: Float = 0.35

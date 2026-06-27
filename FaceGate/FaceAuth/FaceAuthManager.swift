@@ -34,13 +34,11 @@ final class FaceAuthManager: ObservableObject {
     enum LivenessChallenge: CaseIterable {
         case turnLeft
         case turnRight
-        case tiltHead
 
         var prompt: String {
             switch self {
             case .turnLeft: return "Liveness Check: Turn head left"
             case .turnRight: return "Liveness Check: Turn head right"
-            case .tiltHead: return "Liveness Check: Tilt your head"
             }
         }
     }
@@ -237,8 +235,6 @@ final class FaceAuthManager: ObservableObject {
                 isChallengeSatisfied = yaw < -0.12
             case .turnRight:
                 isChallengeSatisfied = yaw > 0.12
-            case .tiltHead:
-                isChallengeSatisfied = abs(roll) > 0.12
             }
 
             if isChallengeSatisfied {

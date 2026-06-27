@@ -35,28 +35,24 @@ final class FaceEnrollmentManager: ObservableObject {
         case straight
         case left
         case right
-        case tilt
 
         var prompt: String {
             switch self {
             case .straight: return "Look straight at the camera"
             case .left: return "Turn your head slightly to the LEFT"
             case .right: return "Turn your head slightly to the RIGHT"
-            case .tilt: return "Tilt your head slightly to the side"
             }
         }
     }
 
     var currentStep: EnrollmentStep {
         let count = collectedEmbeddings.count
-        if count < 2 {
+        if count < 3 {
             return .straight
-        } else if count < 4 {
-            return .left
         } else if count < 6 {
-            return .right
+            return .left
         } else {
-            return .tilt
+            return .right
         }
     }
 
@@ -157,8 +153,6 @@ final class FaceEnrollmentManager: ObservableObject {
                 isPositionValid = yaw < -0.12
             case .right:
                 isPositionValid = yaw > 0.12
-            case .tilt:
-                isPositionValid = abs(roll) > 0.12
             }
 
             if !isPositionValid {
