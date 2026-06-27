@@ -227,8 +227,6 @@ final class FaceAuthManager: ObservableObject {
             guard let challenge = self.activeChallenge else { return }
 
             let yaw = face.yaw.map { Float(truncating: $0) } ?? 0.0
-            let roll = face.roll.map { Float(truncating: $0) } ?? 0.0
-
             var isChallengeSatisfied = false
             switch challenge {
             case .turnLeft:
