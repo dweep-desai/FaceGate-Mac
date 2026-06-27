@@ -8,6 +8,8 @@ struct AnimatedDirectionIndicator: View {
     enum IndicatorDirection {
         case left
         case right
+        case up
+        case down
         case tilt
     }
     
@@ -35,7 +37,10 @@ struct AnimatedDirectionIndicator: View {
                 .foregroundColor(.blue)
                 .padding(12)
                 .background(Circle().fill(Color.black.opacity(0.65)))
-                .offset(x: direction == .left ? -offset : (direction == .right ? offset : 0))
+                .offset(
+                    x: direction == .left ? -offset : (direction == .right ? offset : 0),
+                    y: direction == .up ? -offset : (direction == .down ? offset : 0)
+                )
                 .animation(
                     .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
                     value: offset

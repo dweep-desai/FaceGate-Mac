@@ -2,6 +2,7 @@ import Combine
 import Foundation
 import CoreVideo
 import Vision
+import AppKit
 
 
 /// Manages the face enrollment workflow: capturing multiple reference frames,
@@ -13,7 +14,11 @@ final class FaceEnrollmentManager: ObservableObject {
     @Published var currentQuality: Float = 0
     @Published var statusMessage: String = "Position your face in the frame"
     @Published var warningMessage: String = ""
-    @Published var visualizerData = FaceWireframeData()
+    @Published var yaw: Double = 0.0
+    @Published var pitch: Double = 0.0
+    @Published var roll: Double = 0.0
+    @Published var isTargetPoseAligned: Bool = false
+    @Published var faceCenter = CGPoint(x: 0.5, y: 0.5)
 
     /// Target number of frames to capture.
     let targetFrameCount = FGConstants.enrollmentFrameCount
@@ -26,44 +31,79 @@ final class FaceEnrollmentManager: ObservableObject {
     /// The name of the profile being enrolled.
     private var profileName: String = "Primary Face"
 
-    /// Collected embeddings during enrollment.
-    private var collectedEmbeddings: [[Float]] = []
+    /// Collected embeddings during enrollment, keyed by their target angle bucket.
+    private var completedBuckets: Set<EnrollmentStep> = []
+    private var bucketEmbeddings: [EnrollmentStep: [Float]] = [:]
     private var totalQuality: Float = 0
     private var framesSinceLastCapture: Int = 0
 
-    /// Minimum frames to skip between captures (gives user time to shift expression).
-    private let captureInterval = 15
+    /// Count of consecutive frames where the face pose matched the target step.
+    private var consecutiveFramesInPose: Int = 0
+    private let requiredStableFrames: Int = 10 // ~0.7s of stability
+    
+    private var smoothedYaw: Double = 0.0
+    private var smoothedPitch: Double = 0.0
+    private var smoothedRoll: Double = 0.0
+    
+    /// Minimum frames to skip between captures.
+    private let captureInterval = 5
 
     /// Camera manager for preview layer binding.
     var camera: CameraManager { cameraManager }
 
     enum EnrollmentStep: CaseIterable {
         case straight
-        case left
-        case right
-        case tilt
+        case leftSlight
+        case leftFar
+        case rightSlight
+        case rightFar
+        case up
+        case down
 
         var prompt: String {
             switch self {
             case .straight: return "Look straight at the camera"
-            case .left: return "Turn your head slightly to the LEFT"
-            case .right: return "Turn your head slightly to the RIGHT"
-            case .tilt: return "Tilt your head slightly to the side"
+            case .leftSlight: return "Turn head slightly LEFT"
+            case .leftFar: return "Turn head further LEFT"
+            case .rightSlight: return "Turn head slightly RIGHT"
+            case .rightFar: return "Turn head further RIGHT"
+            case .up: return "Look UP slightly"
+            case .down: return "Look DOWN slightly"
+            }
+        }
+
+        var targetYaw: Float {
+            switch self {
+            case .straight: return 0.0
+            case .leftSlight: return -0.35
+            case .leftFar: return -0.75
+            case .rightSlight: return 0.35
+            case .rightFar: return 0.75
+            case .up: return 0.0
+            case .down: return 0.0
+            }
+        }
+
+        var targetPitch: Float {
+            switch self {
+            case .straight, .leftSlight, .leftFar, .rightSlight, .rightFar: return 0.0
+            case .up: return -0.18
+            case .down: return 0.18
             }
         }
     }
 
     var currentStep: EnrollmentStep {
-        let count = collectedEmbeddings.count
-        if count < 2 {
-            return .straight
-        } else if count < 4 {
-            return .left
-        } else if count < 6 {
-            return .right
-        } else {
-            return .tilt
+        for step in EnrollmentStep.allCases {
+            if !completedBuckets.contains(step) {
+                return step
+            }
         }
+        return .straight
+    }
+
+    var completedSteps: Set<EnrollmentStep> {
+        completedBuckets
     }
 
     enum EnrollmentState: Equatable {
@@ -81,9 +121,12 @@ final class FaceEnrollmentManager: ObservableObject {
     func startEnrollment(name: String = "Primary Face") {
         guard state != .success else { return }
         self.profileName = name
-        collectedEmbeddings = []
+        completedBuckets = []
+        bucketEmbeddings = [:]
         totalQuality = 0
         capturedCount = 0
+        consecutiveFramesInPose = 0
+        isTargetPoseAligned = false
         framesSinceLastCapture = captureInterval  // Allow immediate first capture
         state = .capturing
         statusMessage = "Look straight at the camera"
@@ -100,7 +143,10 @@ final class FaceEnrollmentManager: ObservableObject {
     func cancelEnrollment() {
         cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
-        collectedEmbeddings = []
+        completedBuckets = []
+        bucketEmbeddings = [:]
+        consecutiveFramesInPose = 0
+        isTargetPoseAligned = false
         state = .idle
         capturedCount = 0
         statusMessage = "Enrollment cancelled"
@@ -123,6 +169,7 @@ final class FaceEnrollmentManager: ObservableObject {
 
         faceDetector.detectFacesWithQuality(in: pixelBuffer) { [weak self] results in
             guard let self = self else { return }
+            guard self.state == .capturing else { return }
 
             // Must detect exactly one face.
             guard results.count == 1 else {
@@ -132,74 +179,109 @@ final class FaceEnrollmentManager: ObservableObject {
                     } else {
                         self.warningMessage = "Multiple faces detected — only one face allowed"
                     }
+                    self.isTargetPoseAligned = false
+                    self.consecutiveFramesInPose = 0
                 }
                 return
             }
 
             let (face, quality) = results[0]
 
-            self.updateVisualizerData(from: face)
+            self.updateAngles(from: face)
 
+            // Track and smooth the face center bounding box coordinates
+            let box = face.boundingBox
+            let fX = box.origin.x + box.width / 2.0
+            let fY = 1.0 - (box.origin.y + box.height / 2.0)
+            
+            let cur = self.faceCenter
+            let smoothedX = cur.x + 0.22 * (fX - cur.x)
+            let smoothedY = cur.y + 0.22 * (fY - cur.y)
+            
             DispatchQueue.main.async {
-                self.currentQuality = quality
-                self.warningMessage = ""
+                self.faceCenter = CGPoint(x: smoothedX, y: smoothedY)
             }
 
-            // Reject low-quality captures.
+            // Validate quality.
             guard quality >= FGConstants.minimumCaptureQuality else {
                 DispatchQueue.main.async {
-                    self.warningMessage = "Poor lighting or angle — adjust position"
+                    self.warningMessage = "Poor lighting or quality — adjust position"
+                    self.isTargetPoseAligned = false
+                    self.consecutiveFramesInPose = 0
                 }
                 return
             }
 
-            // Read yaw and roll angles for liveness and multi-angle verification.
-            let yaw = face.yaw.map { Float(truncating: $0) } ?? 0.0
-            let roll = face.roll.map { Float(truncating: $0) } ?? 0.0
+            // Read smoothed yaw and pitch angles in radians
+            let yaw = Float(self.yaw)
+            let pitch = Float(self.pitch)
 
-            let step = self.currentStep
-            var isPositionValid = false
+            let targetStep = self.currentStep
+            let dy = yaw - targetStep.targetYaw
+            let dp = pitch - targetStep.targetPitch
+            let distance = sqrt(dy * dy + dp * dp)
 
-            switch step {
-            case .straight:
-                isPositionValid = abs(yaw) < 0.15 && abs(roll) < 0.12
-            case .left:
-                isPositionValid = yaw < -0.12
-            case .right:
-                isPositionValid = yaw > 0.12
-            case .tilt:
-                isPositionValid = abs(roll) > 0.12
-            }
-
-            if !isPositionValid {
+            // Dynamic distance checking with relaxed tolerance circle (0.28) for comfortable alignment
+            if distance <= 0.28 {
+                self.consecutiveFramesInPose += 1
+                
                 DispatchQueue.main.async {
-                    self.statusMessage = step.prompt
+                    self.warningMessage = ""
+                    self.isTargetPoseAligned = true
+                    self.statusMessage = "\(targetStep.prompt)\n(Hold still...)"
                 }
-                return
-            }
 
-            // Crop the face and generate an embedding.
-            guard let croppedFace = self.faceDetector.cropFace(from: pixelBuffer, observation: face),
-                  let embedding = self.faceEmbedder.generateEmbedding(from: croppedFace) else {
-                return
-            }
-
-            self.framesSinceLastCapture = 0
-            self.collectedEmbeddings.append(embedding)
-            self.totalQuality += quality
-
-            DispatchQueue.main.async {
-                self.capturedCount = self.collectedEmbeddings.count
-
-                if self.capturedCount >= self.targetFrameCount {
-                    self.finishEnrollment()
-                } else {
-                    let nextStep = self.currentStep
-                    self.statusMessage = nextStep.prompt
+                if self.consecutiveFramesInPose >= self.requiredStableFrames {
+                    self.consecutiveFramesInPose = 0
+                    self.capturePose(pixelBuffer: pixelBuffer, face: face, quality: quality, step: targetStep)
+                }
+            } else {
+                self.consecutiveFramesInPose = 0
+                DispatchQueue.main.async {
+                    self.isTargetPoseAligned = false
+                    self.warningMessage = ""
+                    self.statusMessage = targetStep.prompt
                 }
             }
         }
     }
+
+    /// Automatically triggers a capture of the current step's target angle.
+    private func capturePose(pixelBuffer: CVPixelBuffer, face: VNFaceObservation, quality: Float, step: EnrollmentStep) {
+        // Crop the face and generate embedding
+        guard let croppedFace = self.faceDetector.cropFace(from: pixelBuffer, observation: face),
+              let embedding = self.faceEmbedder.generateEmbedding(from: croppedFace) else {
+            DispatchQueue.main.async {
+                self.warningMessage = "Failed to extract face features. Try again."
+            }
+            return
+        }
+
+        // Play premium system sound on successful capture
+        DispatchQueue.main.async {
+            NSSound(named: "Glass")?.play()
+        }
+
+        self.bucketEmbeddings[step] = embedding
+        self.completedBuckets.insert(step)
+        self.totalQuality += quality
+        self.framesSinceLastCapture = 0 // Reset skip frame counter
+
+        DispatchQueue.main.async {
+            self.capturedCount = self.completedBuckets.count
+            self.warningMessage = ""
+            self.isTargetPoseAligned = false
+
+            if self.capturedCount >= self.targetFrameCount {
+                self.finishEnrollment()
+            } else {
+                let nextStep = self.currentStep
+                self.statusMessage = nextStep.prompt
+            }
+        }
+    }
+
+
 
     // MARK: - Finish Enrollment
 
@@ -208,6 +290,8 @@ final class FaceEnrollmentManager: ObservableObject {
         statusMessage = "Processing face data…"
         cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
+
+        let collectedEmbeddings = EnrollmentStep.allCases.compactMap { bucketEmbeddings[$0] }
 
         let newProfile = FaceProfile(
             id: UUID(),
@@ -251,45 +335,169 @@ final class FaceEnrollmentManager: ObservableObject {
             name: name,
             enrolledDate: Date(),
             embeddings: mockEmbeddings,
-            averageQuality: 0.95
+            averageQuality: 0.85
         )
         
         try dataStore.addProfile(newProfile)
-        
-        // Update UserDefaults metadata
-        UserDefaults.standard.set(true, forKey: FGConstants.faceEnrolledKey)
         UserDefaults.standard.set(true, forKey: FGConstants.faceUnlockEnabledKey)
+        UserDefaults.standard.set(true, forKey: FGConstants.faceEnrolledKey)
+        
+        state = .success
+        statusMessage = "Mock face enrolled successfully!"
     }
     #endif
 
-    private func updateVisualizerData(from face: VNFaceObservation) {
-        var data = FaceWireframeData()
-        data.yaw = face.yaw.map { Double(truncating: $0) } ?? 0.0
-        data.roll = face.roll.map { Double(truncating: $0) } ?? 0.0
-        if #available(macOS 14.0, *) {
-            data.pitch = face.pitch.map { Double(truncating: $0) } ?? 0.0
-        }
+    private func updateAngles(from face: VNFaceObservation) {
+        var rawYaw = 0.0
+        var rawPitch = 0.0
+        var rawRoll = 0.0
         
         if let landmarks = face.landmarks {
+            var rawOutline: [CGPoint] = []
+            var rawNose: [CGPoint] = []
+            var rawLeftEye: [CGPoint] = []
+            var rawRightEye: [CGPoint] = []
+            var rawLips: [CGPoint] = []
+            
             if let contour = landmarks.faceContour {
-                data.outlinePoints = contour.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+                rawOutline = contour.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
             }
             if let nose = landmarks.nose {
-                data.nosePoints = nose.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+                rawNose = nose.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
             }
             if let leftEye = landmarks.leftEye {
-                data.leftEyePoints = leftEye.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+                rawLeftEye = leftEye.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
             }
             if let rightEye = landmarks.rightEye {
-                data.rightEyePoints = rightEye.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+                rawRightEye = rightEye.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
             }
             if let outerLips = landmarks.outerLips {
-                data.lipsPoints = outerLips.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+                rawLips = outerLips.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
             }
+            
+            // Estimate smooth continuous yaw/pitch/roll from landmarks in radians
+            let estimatedYaw = self.estimateYaw(leftEye: rawLeftEye, rightEye: rawRightEye, nose: rawNose)
+            let estimatedPitch = self.estimatePitch(leftEye: rawLeftEye, rightEye: rawRightEye, nose: rawNose, lips: rawLips, outline: rawOutline)
+            let estimatedRoll = self.estimateRoll(leftEye: rawLeftEye, rightEye: rawRightEye)
+            
+            let degreesToRadians = Double.pi / 180.0
+            rawYaw = estimatedYaw ?? ((face.yaw.map { Double(truncating: $0) } ?? 0.0) * degreesToRadians)
+            rawPitch = estimatedPitch ?? ((face.pitch.map { Double(truncating: $0) } ?? 0.0) * degreesToRadians)
+            rawRoll = estimatedRoll ?? ((face.roll.map { Double(truncating: $0) } ?? 0.0) * degreesToRadians)
+        } else {
+            let degreesToRadians = Double.pi / 180.0
+            rawYaw = (face.yaw.map { Double(truncating: $0) } ?? 0.0) * degreesToRadians
+            rawPitch = (face.pitch.map { Double(truncating: $0) } ?? 0.0) * degreesToRadians
+            rawRoll = (face.roll.map { Double(truncating: $0) } ?? 0.0) * degreesToRadians
         }
         
+        // Smooth yaw, pitch, and roll using Exponential Moving Average (alpha = 0.22)
+        // to prevent the orange user indicator dot from jerking or jumping around
+        let alpha = 0.22
+        self.smoothedYaw = self.smoothedYaw + alpha * (rawYaw - self.smoothedYaw)
+        self.smoothedPitch = self.smoothedPitch + alpha * (rawPitch - self.smoothedPitch)
+        self.smoothedRoll = self.smoothedRoll + alpha * (rawRoll - self.smoothedRoll)
+        
         DispatchQueue.main.async {
-            self.visualizerData = data
+            self.yaw = self.smoothedYaw
+            self.pitch = self.smoothedPitch
+            self.roll = self.smoothedRoll
         }
+    }
+
+    private func estimateYaw(leftEye: [CGPoint], rightEye: [CGPoint], nose: [CGPoint]) -> Double? {
+        guard !leftEye.isEmpty, !rightEye.isEmpty, !nose.isEmpty else { return nil }
+        
+        let leftCenter = CGPoint(
+            x: leftEye.map { $0.x }.reduce(0, +) / CGFloat(leftEye.count),
+            y: leftEye.map { $0.y }.reduce(0, +) / CGFloat(leftEye.count)
+        )
+        
+        let rightCenter = CGPoint(
+            x: rightEye.map { $0.x }.reduce(0, +) / CGFloat(rightEye.count),
+            y: rightEye.map { $0.y }.reduce(0, +) / CGFloat(rightEye.count)
+        )
+        
+        let noseCenter = CGPoint(
+            x: nose.map { $0.x }.reduce(0, +) / CGFloat(nose.count),
+            y: nose.map { $0.y }.reduce(0, +) / CGFloat(nose.count)
+        )
+        
+        let x1 = min(leftCenter.x, rightCenter.x)
+        let x2 = max(leftCenter.x, rightCenter.x)
+        let dx = x2 - x1
+        guard dx > 0.01 else { return nil }
+        
+        let ratio = (noseCenter.x - x1) / dx
+        let diff = ratio - 0.5
+        
+        let isLeftEyeOnRight = leftCenter.x > rightCenter.x
+        let factor: Double = isLeftEyeOnRight ? -1.8 : 1.8
+        
+        let estimated = Double(diff) * factor
+        return max(-0.6, min(0.6, estimated))
+    }
+    
+    private func estimatePitch(leftEye: [CGPoint], rightEye: [CGPoint], nose: [CGPoint], lips: [CGPoint], outline: [CGPoint]) -> Double? {
+        guard !leftEye.isEmpty, !rightEye.isEmpty, !nose.isEmpty else { return nil }
+        
+        let leftCenter = CGPoint(
+            x: leftEye.map { $0.x }.reduce(0, +) / CGFloat(leftEye.count),
+            y: leftEye.map { $0.y }.reduce(0, +) / CGFloat(leftEye.count)
+        )
+        
+        let rightCenter = CGPoint(
+            x: rightEye.map { $0.x }.reduce(0, +) / CGFloat(rightEye.count),
+            y: rightEye.map { $0.y }.reduce(0, +) / CGFloat(rightEye.count)
+        )
+        
+        let eyesY = (leftCenter.y + rightCenter.y) / 2.0
+        
+        let noseCenter = CGPoint(
+            x: nose.map { $0.x }.reduce(0, +) / CGFloat(nose.count),
+            y: nose.map { $0.y }.reduce(0, +) / CGFloat(nose.count)
+        )
+        
+        let bottomY: CGFloat
+        if !lips.isEmpty {
+            bottomY = lips.map { $0.y }.reduce(0, +) / CGFloat(lips.count)
+        } else if !outline.isEmpty {
+            bottomY = outline[outline.count / 2].y
+        } else {
+            return nil
+        }
+        
+        let totalDist = bottomY - eyesY
+        guard totalDist > 0.01 else { return nil }
+        
+        let noseDist = noseCenter.y - eyesY
+        let ratio = noseDist / totalDist
+        
+        let baseline = !lips.isEmpty ? 0.45 : 0.40
+        let diff = ratio - baseline
+        let factor = -1.5
+        let estimated = Double(diff) * factor
+        return max(-0.4, min(0.4, estimated))
+    }
+    
+    private func estimateRoll(leftEye: [CGPoint], rightEye: [CGPoint]) -> Double? {
+        guard !leftEye.isEmpty, !rightEye.isEmpty else { return nil }
+        
+        let leftCenter = CGPoint(
+            x: leftEye.map { $0.x }.reduce(0, +) / CGFloat(leftEye.count),
+            y: leftEye.map { $0.y }.reduce(0, +) / CGFloat(leftEye.count)
+        )
+        
+        let rightCenter = CGPoint(
+            x: rightEye.map { $0.x }.reduce(0, +) / CGFloat(rightEye.count),
+            y: rightEye.map { $0.y }.reduce(0, +) / CGFloat(rightEye.count)
+        )
+        
+        let dy = leftCenter.y - rightCenter.y
+        let dx = leftCenter.x - rightCenter.x
+        guard abs(dx) > 0.01 else { return nil }
+        
+        let angle = atan2(dy, dx)
+        return max(-0.4, min(0.4, Double(angle)))
     }
 }

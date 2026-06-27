@@ -267,10 +267,19 @@ struct SetupView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 360)
 
+            if PasswordAuth.shared.isPasswordSet {
+                Text("A stored password from your previous install was found in the Keychain. You can keep it and skip this step.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.green.opacity(0.85))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 360)
+                    .padding(.top, 4)
+            }
+
             VStack(spacing: 12) {
-                PasswordField(placeholder: "Choose a password", text: $password)
+                PasswordField(placeholder: PasswordAuth.shared.isPasswordSet ? "Choose a new password (optional)" : "Choose a password", text: $password)
                     .frame(maxWidth: 300)
-                PasswordField(placeholder: "Confirm password", text: $confirmPassword)
+                PasswordField(placeholder: PasswordAuth.shared.isPasswordSet ? "Confirm new password" : "Confirm password", text: $confirmPassword)
                     .frame(maxWidth: 300)
 
                 if let error = passwordError {
@@ -287,9 +296,26 @@ struct SetupView: View {
                     .buttonStyle(.plain)
                     .foregroundColor(.secondary)
 
+                if PasswordAuth.shared.isPasswordSet {
+                    Button("Use Existing Password") {
+                        currentStep = .selectApps
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 12)
+                    .frame(height: 38)
+                    .background(
+                        Capsule()
+                            .strokeBorder(Color.blue.opacity(0.5), lineWidth: 1)
+                    )
+                }
+
                 setupButton("Set Password") {
                     savePassword()
                 }
+                .disabled(PasswordAuth.shared.isPasswordSet && password.isEmpty)
+                .opacity(PasswordAuth.shared.isPasswordSet && password.isEmpty ? 0.5 : 1.0)
             }
             .padding(.bottom, 30)
         }

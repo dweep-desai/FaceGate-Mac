@@ -12,7 +12,6 @@ final class FaceAuthManager: ObservableObject {
     @Published var state: FaceAuthState = .idle
     @Published var statusMessage: String = ""
     @Published var warningMessage: String = ""
-    @Published var visualizerData = FaceWireframeData()
 
     /// The camera manager — exposed for binding the preview layer.
     let cameraManager = CameraManager()
@@ -37,13 +36,11 @@ final class FaceAuthManager: ObservableObject {
     enum LivenessChallenge: CaseIterable {
         case turnLeft
         case turnRight
-        case tiltHead
 
         var prompt: String {
             switch self {
             case .turnLeft: return "Liveness Check: Turn head left"
             case .turnRight: return "Liveness Check: Turn head right"
-            case .tiltHead: return "Liveness Check: Tilt your head"
             }
         }
     }
@@ -201,8 +198,6 @@ final class FaceAuthManager: ObservableObject {
                 self.warningMessage = ""
             }
 
-            self.updateVisualizerData(from: face)
-
             // Crop the face.
             guard let croppedFace = self.faceDetector.cropFace(from: pixelBuffer, observation: face) else {
                 return
@@ -239,7 +234,12 @@ final class FaceAuthManager: ObservableObject {
             guard let challenge = self.activeChallenge else { return }
 
             let yaw = face.yaw.map { Float(truncating: $0) } ?? 0.0
-            let roll = face.roll.map { Float(truncating: $0) } ?? 0.0
+            let pitch: Float
+            if #available(macOS 14.0, *) {
+                pitch = face.pitch.map { Float(truncating: $0) } ?? 0.0
+            } else {
+                pitch = 0.0
+            }
 
             var isChallengeSatisfied = false
             switch challenge {
@@ -247,8 +247,6 @@ final class FaceAuthManager: ObservableObject {
                 isChallengeSatisfied = yaw < -0.12
             case .turnRight:
                 isChallengeSatisfied = yaw > 0.12
-            case .tiltHead:
-                isChallengeSatisfied = abs(roll) > 0.12
             }
 
             if isChallengeSatisfied {
@@ -270,34 +268,5 @@ final class FaceAuthManager: ObservableObject {
         }
     }
 
-    private func updateVisualizerData(from face: VNFaceObservation) {
-        var data = FaceWireframeData()
-        data.yaw = face.yaw.map { Double(truncating: $0) } ?? 0.0
-        data.roll = face.roll.map { Double(truncating: $0) } ?? 0.0
-        if #available(macOS 14.0, *) {
-            data.pitch = face.pitch.map { Double(truncating: $0) } ?? 0.0
-        }
-        
-        if let landmarks = face.landmarks {
-            if let contour = landmarks.faceContour {
-                data.outlinePoints = contour.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
-            }
-            if let nose = landmarks.nose {
-                data.nosePoints = nose.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
-            }
-            if let leftEye = landmarks.leftEye {
-                data.leftEyePoints = leftEye.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
-            }
-            if let rightEye = landmarks.rightEye {
-                data.rightEyePoints = rightEye.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
-            }
-            if let outerLips = landmarks.outerLips {
-                data.lipsPoints = outerLips.normalizedPoints.map { CGPoint(x: $0.x, y: 1 - $0.y) }
-            }
-        }
-        
-        DispatchQueue.main.async {
-            self.visualizerData = data
-        }
-    }
+
 }

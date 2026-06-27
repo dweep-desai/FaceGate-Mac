@@ -50,19 +50,16 @@ struct FaceGuideOverlay: View {
                     )
                     .frame(width: ovalWidth, height: ovalHeight)
                     .position(center)
-                    .scaleEffect(pulseScale)
             }
         }
         .allowsHitTesting(false)  // Don't intercept touches.
         .onAppear {
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                pulseScale = faceDetected ? 1.0 : 1.02
                 borderOpacity = faceDetected ? 0.9 : 0.4
             }
         }
         .onChangeCompat(of: faceDetected) { detected in
             withAnimation(.easeInOut(duration: 0.3)) {
-                pulseScale = detected ? 1.0 : 1.02
                 borderOpacity = detected ? 0.9 : 0.4
             }
         }

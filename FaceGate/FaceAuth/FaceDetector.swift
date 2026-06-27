@@ -54,7 +54,7 @@ final class FaceDetector {
     ///   - pixelBuffer: The video frame to analyze.
     ///   - completion: Returns face observations paired with quality scores (0.0–1.0).
     func detectFacesWithQuality(in pixelBuffer: CVPixelBuffer, completion: @escaping ([(face: VNFaceObservation, quality: Float)]) -> Void) {
-        let faceRequest = VNDetectFaceRectanglesRequest()
+        let faceRequest = VNDetectFaceLandmarksRequest()
         let qualityRequest = VNDetectFaceCaptureQualityRequest()
 
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])

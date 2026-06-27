@@ -261,6 +261,7 @@ struct AuthOverlayView: View {
             // Liveness direction indicator overlay.
             if let challenge = faceAuthManager.activeChallenge {
                 directionIndicator(for: challenge)
+                    .id(challenge)
             }
         }
         .frame(width: 200, height: 200)
@@ -558,7 +559,6 @@ struct AuthOverlayView: View {
         }
     }
 
-    @ViewBuilder
     private func directionIndicator(for challenge: FaceAuthManager.LivenessChallenge) -> some View {
         VStack {
             Spacer()
@@ -566,7 +566,7 @@ struct AuthOverlayView: View {
                 Spacer()
                 AnimatedDirectionIndicator(
                     icon: indicatorIcon(for: challenge),
-                    direction: challenge == .turnLeft ? .left : (challenge == .turnRight ? .right : .tilt)
+                    direction: challenge == .turnLeft ? .left : .right
                 )
                 .padding(8)
             }
@@ -577,7 +577,6 @@ struct AuthOverlayView: View {
         switch challenge {
         case .turnLeft: return "arrow.left.circle.fill"
         case .turnRight: return "arrow.right.circle.fill"
-        case .tiltHead: return "arrowshape.turn.up.right.fill"
         }
     }
 }
