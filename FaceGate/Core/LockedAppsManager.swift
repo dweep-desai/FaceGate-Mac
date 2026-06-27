@@ -30,6 +30,14 @@ final class LockedAppsManager: ObservableObject {
         }
     }
 
+    /// Update the timer mode (fromFocus) for an app.
+    func updateTimerFromFocus(for bundleIdentifier: String, fromFocus: Bool?) {
+        if let index = lockedApps.firstIndex(where: { $0.bundleIdentifier == bundleIdentifier }) {
+            lockedApps[index].timerFromFocus = fromFocus
+            saveLockedApps()
+        }
+    }
+
     /// Add an app to the locked list.
     func lockApp(_ app: LockedApp) {
         if let index = lockedApps.firstIndex(where: { $0.bundleIdentifier == app.bundleIdentifier }) {

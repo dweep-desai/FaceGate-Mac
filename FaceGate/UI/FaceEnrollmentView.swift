@@ -352,5 +352,4 @@ struct FaceEnrollmentView: View {
         }
         .buttonStyle(.plain)
     }
-
 }

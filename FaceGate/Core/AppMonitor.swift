@@ -16,6 +16,7 @@ final class AppMonitor: ObservableObject {
 
     private var launchObserver: NSObjectProtocol?
     private var activateObserver: NSObjectProtocol?
+    private var deactivateObserver: NSObjectProtocol?
 
     private let lockedAppsManager = LockedAppsManager.shared
     private let sessionManager = SessionManager.shared
@@ -56,6 +57,17 @@ final class AppMonitor: ObservableObject {
             self?.handleAppEvent(notification)
         }
 
+        // Observe app deactivations (switching away from an app) for "from focus" timer mode.
+        deactivateObserver = center.addObserver(
+            forName: NSWorkspace.didDeactivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  let bundleId = app.bundleIdentifier else { return }
+            self?.sessionManager.appDidBlur(bundleId)
+        }
+
         isMonitoring = true
     }
 
@@ -75,6 +87,11 @@ final class AppMonitor: ObservableObject {
             activateObserver = nil
         }
 
+        if let observer = deactivateObserver {
+            center.removeObserver(observer)
+            deactivateObserver = nil
+        }
+
         isMonitoring = false
     }
 
@@ -91,6 +108,9 @@ final class AppMonitor: ObservableObject {
 
         // Check if this app is in the locked list.
         guard lockedAppsManager.isLocked(bundleId) else { return }
+
+        // Notify session manager of focus (handles "from focus" timer mode).
+        sessionManager.appDidFocus(bundleId)
 
         // Check if there's an active unlock session.
         guard !sessionManager.hasActiveSession(for: bundleId) else { return }

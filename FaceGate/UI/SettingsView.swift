@@ -717,8 +717,11 @@ private struct BehaviorSettingsView: View {
     @State private var uninstallProtection = UserDefaults.standard.bool(forKey: FGConstants.uninstallProtectionKey)
     @State private var isUpdatingUninstallProtection = false
 
-    @AppStorage("emergencyKillModifier") private var emergencyKillModifier = "Command"
-    @AppStorage("emergencyKillKey") private var emergencyKillKey = "`"
+    @AppStorage(FGConstants.emergencyKillEnabledKey) private var emergencyKillEnabled = true
+    @AppStorage(FGConstants.emergencyKillModifierKey) private var emergencyKillModifier = "Command"
+    @AppStorage(FGConstants.emergencyKillTriggerKey) private var emergencyKillKey = "`"
+
+    @AppStorage(FGConstants.sessionTimerFromFocusKey) private var sessionTimerFromFocus = false
 
     @AppStorage(FGConstants.disableFaceUnlockHoursKey) private var disableFaceUnlockHours = false
     @AppStorage(FGConstants.faceUnlockDisabledStartHourKey) private var startHour = 22
@@ -837,6 +840,23 @@ private struct BehaviorSettingsView: View {
                     Text("After unlocking an app, it stays unlocked for this duration before re-locking. Set to 0 to lock immediately after use, or set to 31 to keep unlocked until you manually lock from the menu bar.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
+
+                    if sessionTimeoutMinutes > 0 && sessionTimeoutMinutes < FGConstants.indefiniteSliderValue {
+                        Picker("Timer Mode", selection: $sessionTimerFromFocus) {
+                            Text("From last unlock").tag(false)
+                            Text("From when app loses focus").tag(true)
+                        }
+                        .pickerStyle(.menu)
+                        if sessionTimerFromFocus {
+                            Text("The timer only counts down while the app is not in focus. Switch away for the full duration to trigger a lock.")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("The timer counts total elapsed time since unlock, regardless of whether you're actively using the app.")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
             } header: {
                 Text("Locking")
@@ -1009,9 +1029,20 @@ private struct BehaviorSettingsView: View {
 
             Section {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Emergency Kill Shortcut")
-                        .font(.system(size: 13, weight: .semibold))
+                    HStack {
+                        Text("Emergency Kill Shortcut")
+                            .font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        Toggle(isOn: $emergencyKillEnabled) { EmptyView() }
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                            .accessibilityLabel("Enable Emergency Kill Shortcut")
+                            .onChangeCompat(of: emergencyKillEnabled) { _ in
+                                GlobalHotkeyManager.shared.reRegisterShortcut()
+                            }
+                    }
                     
+                    if emergencyKillEnabled {
                     HStack {
                         Text("Compulsory modifiers:")
                             .font(.system(size: 11))
@@ -1064,6 +1095,7 @@ private struct BehaviorSettingsView: View {
                     Text("Pressing the shortcut above at any time will instantly quit FaceGate without requiring authentication.")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
+                    }
                 }
             } header: {
                 Text("Emergency")
@@ -1129,6 +1161,11 @@ private struct BehaviorSettingsView: View {
             scheduleManager.unlockEndMinute = unlockEndMinute
 
             scheduleManager.refresh()
+        }
+        .onChangeCompat(of: sessionTimerFromFocus) { _ in
+            for bundleId in SessionManager.shared.activeSessions.keys {
+                SessionManager.shared.refreshSessionForTimerMode(bundleId)
+            }
         }
     }
 
@@ -1763,6 +1800,7 @@ private struct LockedAppDetailView: View {
     
     @State private var hasCustomTimer = false
     @State private var customTimeoutMinutes: Double = 5
+    @State private var appTimerMode: Int = 0 // 0=global, 1=fromUnlock, 2=fromFocus
     
     var body: some View {
         VStack(spacing: 0) {
@@ -1871,6 +1909,36 @@ private struct LockedAppDetailView: View {
                                     .foregroundColor(.secondary)
                             }
                             .opacity(hasCustomTimer ? 1.0 : 0.5)
+
+                            if hasCustomTimer && customTimeoutMinutes > 0 && customTimeoutMinutes < FGConstants.indefiniteSliderValue {
+                                Picker("Timer Mode", selection: $appTimerMode) {
+                                    Text("Use Global Setting").tag(0)
+                                    Text("From last unlock").tag(1)
+                                    Text("From when app loses focus").tag(2)
+                                }
+                                .pickerStyle(.menu)
+                                switch appTimerMode {
+                                case 1:
+                                    Text("The timer counts total elapsed time since unlock, regardless of whether you're actively using the app.")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                case 2:
+                                    Text("The timer only counts down while the app is not in focus. Switch away for the full duration to trigger a lock.")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                default:
+                                    let globalMode = UserDefaults.standard.bool(forKey: FGConstants.sessionTimerFromFocusKey)
+                                    if globalMode {
+                                        Text("Using global: timer counts from when app loses focus.")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        Text("Using global: timer counts total elapsed time since unlock.")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
                         }
                         .padding(.vertical, 8)
                     }
@@ -1893,6 +1961,11 @@ private struct LockedAppDetailView: View {
                     let lastSelection = UserDefaults.standard.double(forKey: "lastCustomTimeout_\(app.bundleIdentifier)")
                     customTimeoutMinutes = lastSelection > 0 ? lastSelection : 5
                 }
+                if let mode = activeApp.timerFromFocus {
+                    appTimerMode = mode ? 2 : 1
+                } else {
+                    appTimerMode = 0
+                }
             }
         }
         .onChangeCompat(of: hasCustomTimer) { newValue in
@@ -1900,6 +1973,16 @@ private struct LockedAppDetailView: View {
         }
         .onChangeCompat(of: customTimeoutMinutes) { newValue in
             saveChanges(hasCustom: hasCustomTimer, minutes: newValue)
+        }
+        .onChangeCompat(of: appTimerMode) { newValue in
+            let fromFocus: Bool?
+            switch newValue {
+            case 1: fromFocus = false
+            case 2: fromFocus = true
+            default: fromFocus = nil
+            }
+            lockedAppsManager.updateTimerFromFocus(for: app.bundleIdentifier, fromFocus: fromFocus)
+            SessionManager.shared.refreshSessionForTimerMode(app.bundleIdentifier)
         }
     }
     

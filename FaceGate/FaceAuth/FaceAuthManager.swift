@@ -154,8 +154,8 @@ final class FaceAuthManager: ObservableObject {
     func stopAuthentication() {
         timeoutWorkItem?.cancel()
         timeoutWorkItem = nil
-        cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
+        cameraManager.stopCapture()
         state = .idle
         statusMessage = ""
         warningMessage = ""
@@ -234,13 +234,6 @@ final class FaceAuthManager: ObservableObject {
             guard let challenge = self.activeChallenge else { return }
 
             let yaw = face.yaw.map { Float(truncating: $0) } ?? 0.0
-            let pitch: Float
-            if #available(macOS 14.0, *) {
-                pitch = face.pitch.map { Float(truncating: $0) } ?? 0.0
-            } else {
-                pitch = 0.0
-            }
-
             var isChallengeSatisfied = false
             switch challenge {
             case .turnLeft:
@@ -255,8 +248,8 @@ final class FaceAuthManager: ObservableObject {
                     self.timeoutWorkItem = nil
                     self.state = .matched
                     self.statusMessage = "Liveness verified!"
-                    self.cameraManager.stopCapture()
                     self.cameraManager.onFrameCaptured = nil
+                    self.cameraManager.stopCapture()
                     self.onResult?(true)
                     self.onResult = nil
                 }

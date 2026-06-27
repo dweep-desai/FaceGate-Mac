@@ -39,6 +39,9 @@ enum FGConstants {
     /// Key: session timeout in seconds.
     static let sessionTimeoutKey = "sessionTimeout"
 
+    /// Key: whether session timer counts from last focus (vs last unlock).
+    static let sessionTimerFromFocusKey = "sessionTimerFromFocus"
+
     /// Key: whether to launch at login.
     static let launchAtLoginKey = "launchAtLogin"
 
@@ -65,6 +68,15 @@ enum FGConstants {
 
     /// Key: end minute for disabling face unlock.
     static let faceUnlockDisabledEndMinuteKey = "faceUnlockDisabledEndMinute"
+
+    /// Key: whether the emergency kill shortcut is enabled.
+    static let emergencyKillEnabledKey = "emergencyKillEnabled"
+
+    /// Key: modifier key used for the emergency kill shortcut.
+    static let emergencyKillModifierKey = "emergencyKillModifier"
+
+    /// Key: trigger key used for the emergency kill shortcut.
+    static let emergencyKillTriggerKey = "emergencyKillKey"
 
     // MARK: - App Schedule
 
