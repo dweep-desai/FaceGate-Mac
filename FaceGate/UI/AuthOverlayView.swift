@@ -176,21 +176,7 @@ struct AuthOverlayView: View {
             .animation(.easeInOut(duration: 0.2), value: authManager.authState)
         }
         .onAppear {
-            // Auto-start face unlock if available.
-            if authManager.isFaceUnlockAvailable && !faceAuthStarted {
-                faceAuthStarted = true
-                authManager.authenticateWithFace { success in
-                    if success {
-                        // Small delay for visual feedback before dismissing.
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                guard !didAuthenticate else { return }
-                                didAuthenticate = true
-                                onAuthenticated()
-                                authManager.resetAttempts()
-                            }
-                    }
-                }
-            } else if !authManager.isFaceUnlockAvailable {
+            if !authManager.isFaceUnlockAvailable {
                 if TouchIDAuth.shared.canUse {
                     authenticateWithTouchID()
                 } else {
@@ -216,9 +202,6 @@ struct AuthOverlayView: View {
                     authManager.stopFaceAuth()
                 }
             }
-        }
-        .onDisappear {
-            authManager.stopFaceAuth()
         }
         .onChangeCompat(of: showPasswordField) { newValue in
             if newValue {

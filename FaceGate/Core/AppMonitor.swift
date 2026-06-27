@@ -106,6 +106,21 @@ final class AppMonitor: ObservableObject {
             return
         }
 
+        // If we are currently blocking an app...
+        if let blockedApp = AppLocker.shared.currentlyBlockedApp {
+            if bundleId != blockedApp && bundleId != Bundle.main.bundleIdentifier {
+                let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
+                if overlayMode == 0 { // Only hide and dismiss on switch-away in Full Screen mode
+                    AppLocker.shared.handleSwitchAway()
+                }
+                return
+            } else if bundleId == blockedApp {
+                // If the user activated the blocked app, bring overlays back to front.
+                AppLocker.shared.bringOverlaysToFront()
+                return
+            }
+        }
+
         // Check if this app is in the locked list.
         guard lockedAppsManager.isLocked(bundleId) else { return }
 

@@ -646,6 +646,7 @@ private struct AuthSettingsView: View {
 private struct BehaviorSettingsView: View {
     @AppStorage(FGConstants.launchAtLoginKey) private var launchAtLogin = false
     @AppStorage(FGConstants.lockOnSleepKey) private var lockOnSleep = false
+    @AppStorage(FGConstants.authOverlayModeKey) private var authOverlayMode = 0
     @State private var sessionTimeoutMinutes: Double = FGConstants.defaultSessionTimeout / 60
     @State private var uninstallProtection = UserDefaults.standard.bool(forKey: FGConstants.uninstallProtectionKey)
     @State private var isUpdatingUninstallProtection = false
@@ -793,6 +794,28 @@ private struct BehaviorSettingsView: View {
                 }
             } header: {
                 Text("Locking")
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker("Shield Mode", selection: $authOverlayMode) {
+                        Text("Full Screen").tag(0)
+                        Text("App Window").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    
+                    if authOverlayMode == 0 {
+                        Text("The authentication shield covers all displays completely, blocking all view of your desktop and open windows until you authenticate.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("The authentication shield overlays directly on top of the locked app's window, letting you see and use other applications.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } header: {
+                Text("Shield Style")
             }
 
             Section {

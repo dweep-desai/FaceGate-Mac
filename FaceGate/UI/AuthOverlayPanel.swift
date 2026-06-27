@@ -13,21 +13,26 @@ final class AuthOverlayPanel: NSPanel {
     ///   - onAuthenticated: Called when authentication succeeds.
     ///   - onCancel: Called when the user cancels / wants to quit the locked app.
     init(
-        screen: NSScreen,
+        frame: NSRect,
         appName: String,
         bundleIdentifier: String,
         onAuthenticated: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) {
         super.init(
-            contentRect: screen.frame,
+            contentRect: frame,
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
 
         // Panel configuration for maximum blocking.
-        self.level = .screenSaver
+        let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
+        if overlayMode == 1 {
+            self.level = .normal
+        } else {
+            self.level = .screenSaver
+        }
         self.isOpaque = false
         self.backgroundColor = .clear
         self.hasShadow = false
@@ -55,7 +60,8 @@ final class AuthOverlayPanel: NSPanel {
         )
 
         let hostingView = NSHostingView(rootView: overlayView)
-        hostingView.frame = screen.frame
+        hostingView.frame = NSRect(origin: .zero, size: frame.size)
+        hostingView.autoresizingMask = [.width, .height]
         self.contentView = hostingView
     }
 
