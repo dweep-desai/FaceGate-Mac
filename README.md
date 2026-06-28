@@ -38,10 +38,12 @@ All controls in your hands - 100% free & open source , 100% malware free , 100% 
 
 - **App Locking** — Lock any installed app. FaceGate intercepts launches in real-time and prevents access until authenticated.
 - **On-Device Face Recognition** — Software-based face embedding pipeline running entirely on your Mac via the Apple Neural Engine. No cloud, no data leaving your device.
+- **Multi-Face Enrollment** — Enroll up to 3 different faces so family or coworkers can also unlock apps.
+- **External Camera Support** — Use an external USB webcam instead of the built-in camera.
 - **Liveness Detection** — Head-pose challenges (turn left, turn right, tilt) to prevent photo and video spoofing.
 - **Touch ID** — Seamless integration with macOS Touch ID.
 - **Password** — Encrypted PIN stored in the macOS Keychain.
-- **Per-App Session Timers** — Customizable unlock duration per app, including "Keep Unlocked Indefinitely." and "Lock immediately"
+- **Per-App Session Timers** — Customizable unlock duration per app, with timer modes: count from last unlock or from when the app loses focus. Includes "Keep Unlocked Indefinitely" and "Lock immediately"
 - **Lock-on-Sleep** — Automatically lock all apps when your Mac sleeps or the screen locks.
 - **Uninstall Protection** — Prevents casual deletion by making the app bundle immutable and requires Admin Privileges to uninstall.
 - **Scheduled App-Lock/Unlock** — Time-based auto-lock and auto-unlock windows.
