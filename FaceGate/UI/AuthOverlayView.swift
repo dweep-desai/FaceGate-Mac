@@ -349,6 +349,16 @@ struct AuthOverlayView: View {
                     withAnimation {
                         showFallbacks = false
                         isTimedOut = false
+                    }
+                    // Issue #103: Force our panel back to key status before starting face
+                    // auth. If the user cancelled a Touch ID sheet, the system dialog
+                    // may still be animating out. Delaying one run-loop tick lets it
+                    // fully clear so no phantom chrome is left on screen.
+                    NSApp.activate(ignoringOtherApps: true)
+                    if let panel = NSApp.windows.first(where: { $0 is AuthOverlayPanel && $0.isVisible }) {
+                        panel.makeKeyAndOrderFront(nil)
+                    }
+                    DispatchQueue.main.async {
                         faceAuthStarted = true
                         authManager.authenticateWithFace { success in
                             if success {
