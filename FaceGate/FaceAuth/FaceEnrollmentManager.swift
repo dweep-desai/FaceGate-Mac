@@ -19,6 +19,7 @@ final class FaceEnrollmentManager: ObservableObject {
     @Published var roll: Double = 0.0
     @Published var isTargetPoseAligned: Bool = false
     @Published var faceCenter = CGPoint(x: 0.5, y: 0.5)
+    var isAddingFace: Bool = false
 
     /// Target number of frames to capture.
     let targetFrameCount = FGConstants.enrollmentFrameCount
@@ -141,8 +142,8 @@ final class FaceEnrollmentManager: ObservableObject {
 
     /// Cancel the enrollment process and clean up.
     func cancelEnrollment() {
-        cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
+        cameraManager.stopCapture()
         completedBuckets = []
         bucketEmbeddings = [:]
         consecutiveFramesInPose = 0
@@ -288,21 +289,22 @@ final class FaceEnrollmentManager: ObservableObject {
     private func finishEnrollment() {
         state = .processing
         statusMessage = "Processing face data…"
-        cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
+        cameraManager.stopCapture()
 
         let collectedEmbeddings = EnrollmentStep.allCases.compactMap { bucketEmbeddings[$0] }
+        let averageQuality = totalQuality / Float(collectedEmbeddings.count)
 
-        let newProfile = FaceProfile(
+        let newFace = FaceEnrollment.EnrolledFace(
             id: UUID(),
             name: profileName,
-            enrolledDate: Date(),
             embeddings: collectedEmbeddings,
-            averageQuality: totalQuality / Float(collectedEmbeddings.count)
+            enrolledDate: Date(),
+            averageQuality: averageQuality
         )
 
         do {
-            try dataStore.addProfile(newProfile)
+            try dataStore.addProfile(newFace)
 
             // Enable face unlock by default after successful enrollment.
             UserDefaults.standard.set(true, forKey: FGConstants.faceUnlockEnabledKey)
@@ -329,12 +331,11 @@ final class FaceEnrollmentManager: ObservableObject {
             vector = VectorMath.normalize(vector)
             mockEmbeddings.append(vector)
         }
-        
-        let newProfile = FaceProfile(
+        let newProfile = FaceEnrollment.EnrolledFace(
             id: UUID(),
             name: name,
-            enrolledDate: Date(),
             embeddings: mockEmbeddings,
+            enrolledDate: Date(),
             averageQuality: 0.85
         )
         

@@ -262,11 +262,14 @@ private struct AuthSettingsView: View {
         let stored = UserDefaults.standard.float(forKey: FGConstants.faceUnlockThresholdKey)
         return stored > 0 ? stored : FGConstants.defaultFaceUnlockThreshold
     }()
+    @State private var enrolledFaces: [FaceEnrollment.EnrolledFace] = []
+    @State private var isAddingFace = false
+    @State private var faceNames: [UUID: String] = [:]
 
     // NEW state variables for multi-profile support:
-    @State private var enrolledProfiles: [FaceProfile] = []
+    @State private var enrolledProfiles: [FaceEnrollment.EnrolledFace] = []
     @State private var showRenameAlert = false
-    @State private var profileToRename: FaceProfile? = nil
+    @State private var profileToRename: FaceEnrollment.EnrolledFace? = nil
     @State private var tempProfileName = ""
     @State private var showAddProfileAlert = false
     @State private var nextProfileName = ""
@@ -381,14 +384,17 @@ private struct AuthSettingsView: View {
                         )
                     }
 
-                    // Enroll / Re-enroll / Add Profile actions
+                    // Enroll / Add Profile / Delete actions
                     HStack(spacing: 12) {
                         if faceEnrolled {
-                            Button("Add Face Profile") {
-                                nextProfileName = ""
-                                showAddProfileAlert = true
+                            if enrolledProfiles.count < 3 {
+                                Button("Add Face Profile") {
+                                    isAddingFace = true
+                                    nextProfileName = ""
+                                    showAddProfileAlert = true
+                                }
+                                .controlSize(.small)
                             }
-                            .controlSize(.small)
                             
                             Button("Delete All Face Data") {
                                 try? FaceDataStore.shared.delete()
@@ -398,6 +404,7 @@ private struct AuthSettingsView: View {
                             .foregroundColor(.red)
                         } else {
                             Button("Enroll Face") {
+                                isAddingFace = false
                                 nextProfileName = "Primary Face"
                                 showAddProfileAlert = true
                             }
@@ -564,6 +571,9 @@ private struct AuthSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .onAppear {
+            loadProfiles()
+        }
         .sheet(isPresented: $showFaceEnrollment) {
             FaceEnrollmentView(
                 onComplete: {
@@ -573,7 +583,8 @@ private struct AuthSettingsView: View {
                     nextProfileName = ""
                 },
                 isInSettings: true,
-                profileName: nextProfileName.isEmpty ? "Primary Face" : nextProfileName
+                profileName: nextProfileName.isEmpty ? "Primary Face" : nextProfileName,
+                isAddingFace: isAddingFace
             )
         }
         .alert("Rename Profile", isPresented: $showRenameAlert, actions: {
@@ -637,7 +648,7 @@ private struct AuthSettingsView: View {
 
     private func loadProfiles() {
         if let enrollment = FaceDataStore.shared.load() {
-            enrolledProfiles = enrollment.profiles
+            enrolledProfiles = enrollment.faces
             faceEnrolled = !enrolledProfiles.isEmpty
         } else {
             enrolledProfiles = []
@@ -705,6 +716,53 @@ private struct AuthSettingsView: View {
         confirmPassword = ""
         passwordError = nil
         passwordSuccess = false
+    }
+
+    private func refreshEnrolledFaces() {
+        faceEnrolled = UserDefaults.standard.bool(forKey: FGConstants.faceEnrolledKey)
+        faceUnlockEnabled = UserDefaults.standard.bool(forKey: FGConstants.faceUnlockEnabledKey)
+        if let enrollment = FaceDataStore.shared.load() {
+            enrolledFaces = enrollment.faces
+            for face in enrollment.faces {
+                if faceNames[face.id] == nil {
+                    faceNames[face.id] = face.name
+                }
+            }
+        } else {
+            enrolledFaces = []
+            faceNames = [:]
+        }
+    }
+
+    private func renameFace(id: UUID, newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            if let enrollment = FaceDataStore.shared.load(),
+               let index = enrollment.faces.firstIndex(where: { $0.id == id }) {
+                faceNames[id] = enrollment.faces[index].name
+            }
+            return
+        }
+        if var enrollment = FaceDataStore.shared.load() {
+            if let index = enrollment.faces.firstIndex(where: { $0.id == id }) {
+                enrollment.faces[index].name = trimmed
+                try? FaceDataStore.shared.save(enrollment)
+                faceNames[id] = trimmed
+                refreshEnrolledFaces()
+            }
+        }
+    }
+
+    private func deleteFace(id: UUID) {
+        if var enrollment = FaceDataStore.shared.load() {
+            enrollment.faces.removeAll(where: { $0.id == id })
+            if enrollment.faces.isEmpty {
+                try? FaceDataStore.shared.delete()
+            } else {
+                try? FaceDataStore.shared.save(enrollment)
+            }
+            refreshEnrolledFaces()
+        }
     }
 }
 

@@ -1,78 +1,56 @@
 import Foundation
 
-/// Model representing a user's face enrollment data.
-/// Supports multiple registered face profiles.
-/// Model representing a single face profile enrollment.
-struct FaceProfile: Codable, Identifiable {
-    let id: UUID
-    var name: String
-    let enrolledDate: Date
-    let embeddings: [[Float]]
-    let averageQuality: Float
-}
-
-/// Model representing a user's face enrollment data.
-/// Supports multiple registered face profiles.
+/// Contains one or more enrolled faces.
 struct FaceEnrollment: Codable {
-    /// The registered face profiles.
-    var profiles: [FaceProfile]
-
-    enum CodingKeys: String, CodingKey {
-        case embeddings
-        case enrolledDate
-        case averageQuality
-        case profiles
+    struct EnrolledFace: Codable, Identifiable {
+        let id: UUID
+        var name: String
+        let embeddings: [[Float]]
+        let enrolledDate: Date
+        let averageQuality: Float
     }
 
-    init(embeddings: [[Float]], enrolledDate: Date, averageQuality: Float) {
-        let legacyProfile = FaceProfile(
-            id: UUID(),
-            name: "Primary Face",
-            enrolledDate: enrolledDate,
-            embeddings: embeddings,
-            averageQuality: averageQuality
-        )
-        self.profiles = [legacyProfile]
+    var faces: [EnrolledFace]
+
+    /// Whether the enrollment has enough embeddings to be considered valid.
+    var isValid: Bool {
+        !faces.isEmpty && faces.allSatisfy { $0.embeddings.count >= 3 }
     }
 
-    init(profiles: [FaceProfile]) {
-        self.profiles = profiles
+    init(faces: [EnrolledFace]) {
+        self.faces = faces
     }
 
-    // Auto-migrate legacy enrollment files to the new multi-profile format
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let profiles = try? container.decode([FaceProfile].self, forKey: .profiles) {
-            self.profiles = profiles
-        } else if let legacyEmbeddings = try? container.decode([[Float]].self, forKey: .embeddings) {
-            let date = (try? container.decode(Date.self, forKey: .enrolledDate)) ?? Date()
-            let quality = (try? container.decode(Float.self, forKey: .averageQuality)) ?? 0.8
-            
-            let legacyProfile = FaceProfile(
-                id: UUID(),
-                name: "Primary Face",
-                enrolledDate: date,
-                embeddings: legacyEmbeddings,
-                averageQuality: quality
-            )
-            self.profiles = [legacyProfile]
+        if let decodedFaces = try? container.decode([EnrolledFace].self, forKey: .faces) {
+            self.faces = decodedFaces
         } else {
-            self.profiles = []
+            // Fallback to legacy single-face format
+            let embeddings = try container.decode([[Float]].self, forKey: .embeddings)
+            let enrolledDate = try container.decode(Date.self, forKey: .enrolledDate)
+            let averageQuality = try container.decode(Float.self, forKey: .averageQuality)
+            
+            let legacyFace = EnrolledFace(
+                id: UUID(),
+                name: "Face 1",
+                embeddings: embeddings,
+                enrolledDate: enrolledDate,
+                averageQuality: averageQuality
+            )
+            self.faces = [legacyFace]
         }
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(profiles, forKey: .profiles)
+        try container.encode(faces, forKey: .faces)
     }
 
-    /// Number of valid frames captured during enrollment.
-    var frameCount: Int {
-        profiles.reduce(0) { $0 + $1.embeddings.count }
-    }
-
-    /// Whether the enrollment has enough embeddings to be considered valid.
-    var isValid: Bool {
-        !profiles.isEmpty && profiles.allSatisfy { $0.embeddings.count >= 3 }
+    enum CodingKeys: String, CodingKey {
+        case faces
+        case embeddings
+        case enrolledDate
+        case averageQuality
     }
 }

@@ -1,0 +1,71 @@
+[
+  {
+    "metadataOutputVersion" : "3.0",
+    "shortDescription" : "MobileFaceNet: 112x112 RGB → 512-dim face embedding",
+    "outputSchema" : [
+      {
+        "hasShapeFlexibility" : "0",
+        "isOptional" : "0",
+        "dataType" : "Float16",
+        "formattedType" : "MultiArray (Float16 1 × 512)",
+        "shortDescription" : "512-dimensional L2-normalized face embedding",
+        "shape" : "[1, 512]",
+        "name" : "embedding",
+        "type" : "MultiArray"
+      }
+    ],
+    "storagePrecision" : "Float16",
+    "modelParameters" : [
+
+    ],
+    "author" : "FaceGuard (InsightFace MobileFaceNet w600k)",
+    "specificationVersion" : 7,
+    "mlProgramOperationTypeHistogram" : {
+      "Ios16.conv" : 49,
+      "Ios16.add" : 12,
+      "Ios16.prelu" : 34,
+      "Ios16.batchNorm" : 1,
+      "Ios16.linear" : 1,
+      "ExpandDims" : 1,
+      "Ios16.reshape" : 1,
+      "Squeeze" : 1,
+      "Ios16.cast" : 1
+    },
+    "computePrecision" : "Mixed (Float16, Int32)",
+    "isUpdatable" : "0",
+    "stateSchema" : [
+
+    ],
+    "availability" : {
+      "macOS" : "13.0",
+      "tvOS" : "16.0",
+      "visionOS" : "1.0",
+      "watchOS" : "9.0",
+      "iOS" : "16.0",
+      "macCatalyst" : "16.0"
+    },
+    "modelType" : {
+      "name" : "MLModelType_mlProgram"
+    },
+    "inputSchema" : [
+      {
+        "hasShapeFlexibility" : "0",
+        "isOptional" : "0",
+        "dataType" : "Float32",
+        "formattedType" : "MultiArray (Float32 1 × 3 × 112 × 112)",
+        "shortDescription" : "112x112 RGB face crop, normalized to [-1, 1]",
+        "shape" : "[1, 3, 112, 112]",
+        "name" : "face_image",
+        "type" : "MultiArray"
+      }
+    ],
+    "userDefinedMetadata" : {
+      "com.github.apple.coremltools.conversion_date" : "2026-06-12",
+      "com.github.apple.coremltools.source" : "torch==2.8.0",
+      "com.github.apple.coremltools.version" : "9.0",
+      "com.github.apple.coremltools.source_dialect" : "TorchScript"
+    },
+    "generatedClassName" : "FaceEmbedding",
+    "method" : "predict"
+  }
+]

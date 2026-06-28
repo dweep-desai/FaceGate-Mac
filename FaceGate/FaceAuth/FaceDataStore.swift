@@ -61,9 +61,9 @@ final class FaceDataStore {
     /// - Throws: If the updated enrollment cannot be saved or files deleted.
     func deleteProfile(id: UUID) throws {
         guard var enrollment = load() else { return }
-        enrollment.profiles.removeAll { $0.id == id }
+        enrollment.faces.removeAll { $0.id == id }
 
-        if enrollment.profiles.isEmpty {
+        if enrollment.faces.isEmpty {
             try delete()
         } else {
             try save(enrollment)
@@ -77,22 +77,22 @@ final class FaceDataStore {
     /// - Throws: If the file cannot be saved.
     func renameProfile(id: UUID, newName: String) throws {
         guard var enrollment = load() else { return }
-        if let idx = enrollment.profiles.firstIndex(where: { $0.id == id }) {
-            enrollment.profiles[idx].name = newName
+        if let idx = enrollment.faces.firstIndex(where: { $0.id == id }) {
+            enrollment.faces[idx].name = newName
             try save(enrollment)
         }
     }
 
     /// Append a new face profile to the existing enrollment, or create one.
-    /// - Parameter profile: The new FaceProfile to add.
+    /// - Parameter profile: The new EnrolledFace to add.
     /// - Throws: If the file cannot be saved.
-    func addProfile(_ profile: FaceProfile) throws {
+    func addProfile(_ profile: FaceEnrollment.EnrolledFace) throws {
         var enrollment: FaceEnrollment
         if let existing = load() {
             enrollment = existing
-            enrollment.profiles.append(profile)
+            enrollment.faces.append(profile)
         } else {
-            enrollment = FaceEnrollment(profiles: [profile])
+            enrollment = FaceEnrollment(faces: [profile])
         }
         try save(enrollment)
     }

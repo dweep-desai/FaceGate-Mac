@@ -77,8 +77,8 @@ final class FaceAuthManager: ObservableObject {
     }
 
     /// Get list of currently enrolled face profiles.
-    var enrolledProfiles: [FaceProfile] {
-        dataStore.load()?.profiles ?? []
+    var enrolledProfiles: [FaceEnrollment.EnrolledFace] {
+        dataStore.load()?.faces ?? []
     }
 
     /// Checks if face unlock is temporarily disabled based on the current hour/minute settings.
@@ -123,7 +123,7 @@ final class FaceAuthManager: ObservableObject {
             return
         }
 
-        enrolledEmbeddings = enrollment.profiles.flatMap { $0.embeddings }
+        enrolledEmbeddings = enrollment.faces.flatMap { $0.embeddings }
         onResult = completion
         frameCount = 0
         authStartTime = Date()
