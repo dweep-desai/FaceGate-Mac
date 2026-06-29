@@ -21,10 +21,25 @@ final class SessionManager: ObservableObject {
         return FGConstants.defaultSessionTimeout
     }
 
+    /// Tracks when each unlocked app last lost focus (for "from focus" timer mode).
+    private var appFocusLostAt: [String: Date] = [:]
+
+    /// Duration per app used when session was created (needed for focus mode check).
+    private var sessionDurations: [String: TimeInterval] = [:]
+
     private var cleanupTimer: Timer?
 
     private init() {
         startCleanupTimer()
+    }
+
+    /// Whether "from focus" timer mode is enabled for the given app.
+    private func timerFromFocus(for bundleIdentifier: String) -> Bool {
+        if let app = LockedAppsManager.shared.lockedApps.first(where: { $0.bundleIdentifier == bundleIdentifier }),
+           let appMode = app.timerFromFocus {
+            return appMode
+        }
+        return UserDefaults.standard.bool(forKey: FGConstants.sessionTimerFromFocusKey)
     }
 
     // MARK: - Public API
@@ -41,8 +56,11 @@ final class SessionManager: ObservableObject {
             duration = customTimeout
         }
         
+        appFocusLostAt.removeValue(forKey: bundleIdentifier)
+        
         if duration == FGConstants.indefiniteSessionValue {
             activeSessions[bundleIdentifier] = .distantFuture
+            sessionDurations[bundleIdentifier] = duration
             return
         }
         
@@ -50,6 +68,7 @@ final class SessionManager: ObservableObject {
         
         let expiry = Date().addingTimeInterval(duration)
         activeSessions[bundleIdentifier] = expiry
+        sessionDurations[bundleIdentifier] = duration
     }
 
     /// Check if an app has an active (non-expired) unlock session.
@@ -60,18 +79,63 @@ final class SessionManager: ObservableObject {
         } else {
             // Session expired — clean up.
             activeSessions.removeValue(forKey: bundleIdentifier)
+            sessionDurations.removeValue(forKey: bundleIdentifier)
+            appFocusLostAt.removeValue(forKey: bundleIdentifier)
             return false
         }
+    }
+
+    /// Called when an app gains focus. For "from focus" mode, checks if the
+    /// out-of-focus duration exceeded the timeout. If still within limit, extends
+    /// the session expiry so the timer resets on each return.
+    func appDidFocus(_ bundleIdentifier: String) {
+        guard timerFromFocus(for: bundleIdentifier),
+              let duration = sessionDurations[bundleIdentifier],
+              duration > 0, duration != FGConstants.indefiniteSessionValue else { return }
+
+        if let lostAt = appFocusLostAt[bundleIdentifier] {
+            let outOfFocus = Date().timeIntervalSince(lostAt)
+            appFocusLostAt.removeValue(forKey: bundleIdentifier)
+            if outOfFocus > duration {
+                revokeSession(for: bundleIdentifier)
+                return
+            }
+        }
+
+        // Extend the wall-clock expiry so the session doesn't expire while the app is in focus.
+        activeSessions[bundleIdentifier] = Date().addingTimeInterval(duration)
+    }
+
+    /// Called when the timer mode is changed mid-session (globally or per-app).
+    /// Extends the session expiry so the new mode takes effect immediately.
+    func refreshSessionForTimerMode(_ bundleIdentifier: String) {
+        guard timerFromFocus(for: bundleIdentifier),
+              activeSessions[bundleIdentifier] != nil,
+              let duration = sessionDurations[bundleIdentifier],
+              duration > 0, duration != FGConstants.indefiniteSessionValue else { return }
+        activeSessions[bundleIdentifier] = Date().addingTimeInterval(duration)
+    }
+
+    /// Called when an app loses focus. For "from focus" mode, records the time
+    /// so the out-of-focus duration can be checked on next activation.
+    func appDidBlur(_ bundleIdentifier: String) {
+        guard timerFromFocus(for: bundleIdentifier),
+              activeSessions[bundleIdentifier] != nil else { return }
+        appFocusLostAt[bundleIdentifier] = Date()
     }
 
     /// Manually revoke the session for a specific app (re-lock it).
     func revokeSession(for bundleIdentifier: String) {
         activeSessions.removeValue(forKey: bundleIdentifier)
+        sessionDurations.removeValue(forKey: bundleIdentifier)
+        appFocusLostAt.removeValue(forKey: bundleIdentifier)
     }
 
     /// Revoke all active sessions (lock everything).
     func revokeAllSessions() {
         activeSessions.removeAll()
+        sessionDurations.removeAll()
+        appFocusLostAt.removeAll()
     }
 
     /// Update the session timeout duration.
@@ -81,6 +145,7 @@ final class SessionManager: ObservableObject {
         if timeout == FGConstants.indefiniteSessionValue {
             for (bundleId, _) in activeSessions {
                 activeSessions[bundleId] = .distantFuture
+                sessionDurations[bundleId] = timeout
             }
         } else if timeout <= 0 {
             revokeAllSessions()
@@ -88,6 +153,7 @@ final class SessionManager: ObservableObject {
             let newExpiry = Date().addingTimeInterval(timeout)
             for (bundleId, _) in activeSessions {
                 activeSessions[bundleId] = newExpiry
+                sessionDurations[bundleId] = timeout
             }
         }
     }

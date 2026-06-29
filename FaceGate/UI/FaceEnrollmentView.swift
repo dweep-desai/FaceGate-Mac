@@ -12,6 +12,9 @@ struct FaceEnrollmentView: View {
     /// Whether this is shown in settings (allows cancel) vs onboarding (allows skip).
     var isInSettings: Bool = false
 
+    /// Whether this is adding a new face to an existing enrollment
+    var isAddingFace: Bool = false
+
     @State private var cameraAuthorization: AVAuthorizationStatus = .notDetermined
 
     private var staticStatusMessage: String {
@@ -52,6 +55,14 @@ struct FaceEnrollmentView: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 300)
+
+                if !isAddingFace && !isInSettings {
+                    Text("You can add up to 3 faces from Settings")
+                        .font(.system(size: 11))
+                        .foregroundColor(.blue.opacity(0.85))
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 2)
+                }
             }
             .padding(.top, 12)
             .padding(.bottom, 4)
@@ -128,6 +139,7 @@ struct FaceEnrollmentView: View {
         }
         .frame(width: 420, height: isInSettings ? 530 : 490)
         .onAppear {
+            enrollmentManager.isAddingFace = isAddingFace
             checkCameraAndStart()
         }
         .onDisappear {
@@ -322,7 +334,7 @@ struct FaceEnrollmentView: View {
                     Spacer()
                     AnimatedDirectionIndicator(
                         icon: indicatorIcon(for: step),
-                        direction: step == .left ? .left : (step == .right ? .right : .tilt)
+                        direction: step == .left ? .left : .right
                     )
                     .padding(8)
                 }
@@ -335,7 +347,6 @@ struct FaceEnrollmentView: View {
         case .straight: return ""
         case .left: return "arrow.left.circle.fill"
         case .right: return "arrow.right.circle.fill"
-        case .tilt: return "arrowshape.turn.up.right.fill"
         }
     }
 }

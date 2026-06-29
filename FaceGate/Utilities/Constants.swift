@@ -39,6 +39,9 @@ enum FGConstants {
     /// Key: session timeout in seconds.
     static let sessionTimeoutKey = "sessionTimeout"
 
+    /// Key: whether session timer counts from last focus (vs last unlock).
+    static let sessionTimerFromFocusKey = "sessionTimerFromFocus"
+
     /// Key: whether to launch at login.
     static let launchAtLoginKey = "launchAtLogin"
 
@@ -65,6 +68,15 @@ enum FGConstants {
 
     /// Key: end minute for disabling face unlock.
     static let faceUnlockDisabledEndMinuteKey = "faceUnlockDisabledEndMinute"
+
+    /// Key: whether the emergency kill shortcut is enabled.
+    static let emergencyKillEnabledKey = "emergencyKillEnabled"
+
+    /// Key: modifier key used for the emergency kill shortcut.
+    static let emergencyKillModifierKey = "emergencyKillModifier"
+
+    /// Key: trigger key used for the emergency kill shortcut.
+    static let emergencyKillTriggerKey = "emergencyKillKey"
 
     // MARK: - App Schedule
 
@@ -126,8 +138,8 @@ enum FGConstants {
 
     // MARK: - Face Enrollment
 
-    /// Number of face frames to capture during enrollment (2 for each direction: straight, left, right, tilt).
-    static let enrollmentFrameCount = 8
+    /// Number of face frames to capture during enrollment (3 for each direction: straight, left, right).
+    static let enrollmentFrameCount = 9
 
     /// Minimum face capture quality score (0.0–1.0) for enrollment.
     static let minimumCaptureQuality: Float = 0.35

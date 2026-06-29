@@ -21,7 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize Sparkle updater for automatic updates.
         updaterController = SPUStandardUpdaterController(
             startingUpdater: true,
-            updaterDelegate: nil,
+            updaterDelegate: self,
             userDriverDelegate: nil
         )
 
@@ -287,6 +287,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } catch {
             print("[FaceGate] Failed to sync uninstall protection on launch: \(error)")
+        }
+    }
+}
+
+// MARK: - Sparkle Updater Delegate
+
+extension AppDelegate: SPUUpdaterDelegate {
+    func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+        let nsError = error as NSError
+        guard nsError.domain == SUSparkleErrorDomain,
+              nsError.code == 4012,
+              UserDefaults.standard.bool(forKey: FGConstants.uninstallProtectionKey) else { return }
+
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = "Update Failed — Uninstall Protection Is On"
+            alert.informativeText = "FaceGate's uninstall protection prevents the app bundle from being modified. To update, disable Uninstall Protection in Settings → Advanced, then check for updates again."
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
         }
     }
 }

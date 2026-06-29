@@ -127,5 +127,14 @@ final class AppLocker: ObservableObject {
 
         // Activate FaceGate so it becomes the active app and can receive keyboard input.
         NSApp.activate(ignoringOtherApps: true)
+
+        // Hiding a running app causes macOS to asynchronously focus the next app.
+        // We activate again on the next runloop tick to override this focus shift.
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            if let activeScreen = activeScreen {
+                self.overlayPanels.first(where: { $0.screen == activeScreen })?.makeKeyAndOrderFront(nil)
+            }
+        }
     }
 }

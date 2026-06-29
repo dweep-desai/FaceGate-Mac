@@ -5,6 +5,34 @@
     <description>Most recent changes to FaceGate.</description>
     <language>en</language>
     <item>
+      <title>Version 1.2.0</title>
+      <description><![CDATA[
+        <ul>
+          <li>New: Enroll up to 3 different faces so family or coworkers can also unlock apps</li>
+          <li>New: Choose between your built-in camera and an external USB webcam</li>
+          <li>New: Pick how the auto-lock timer counts — from your last unlock, or from when FaceGate detects you stepped away</li>
+          <li>New: Each locked app can have its own timer mode</li>
+          <li>New: You can now disable the Emergency Kill Shortcut in Settings if you keep triggering it by accident</li>
+          <li>New: Face enrollment is simpler — just look straight, left, and right (no more head tilt)</li>
+          <li>Fix: Touch ID prompt no longer gets stuck on screen after switching back to face unlock</li>
+          <li>Fix: Lock screen windows no longer lose focus after authenticating with Touch ID or password</li>
+          <li>Fix: Fixed a rare crash when rapidly locking and unlocking apps</li>
+          <li>Fix: Display brightness is no longer left at maximum after closing the enrollment window</li>
+          <li>Fix: Face unlock is more secure with constant-time password checking</li>
+          <li>Fix: Sparkle updates now show a helpful alert if macOS uninstall protection blocks the update</li>
+        </ul>
+      ]]></description>
+      <pubDate>Sun, 28 Jun 2026 23:52:38 +0400</pubDate>
+      <enclosure
+        url="https://github.com/dweep-desai/FaceGate-Mac/releases/download/v1.2.0/FaceGate-v1.2.0.dmg"
+        sparkle:version="5"
+        sparkle:shortVersionString="1.2.0"
+        sparkle:edSignature="QO5VmRPzp+82vpnc6Z6odu4LZvorWbX5Jz+pb7lPvz5tcIlMqWANTcdJpkn+lJDHjppcCk2McMnUh0eacghfDg=="
+        length="11073402"
+        type="application/octet-stream" />
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+    </item>
+    <item>
       <title>Version 1.1.1</title>
       <description><![CDATA[
         <ul>

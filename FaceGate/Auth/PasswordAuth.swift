@@ -41,7 +41,7 @@ final class PasswordAuth {
         }
 
         let attemptHash = hashPassword(password, salt: storedSalt)
-        return attemptHash == storedHash
+        return constantTimeEqual(attemptHash, storedHash)
     }
 
     /// Change the app password (requires old password verification first).
@@ -66,6 +66,19 @@ final class PasswordAuth {
     }
 
     // MARK: - Private
+
+    /// Compare two Data buffers in constant time to prevent timing side-channel attacks.
+    /// Swift's default `==` on Data exits on the first mismatched byte, leaking information
+    /// about how many leading bytes were correct. This XOR-accumulation approach always
+    /// examines every byte regardless of where differences occur.
+    private func constantTimeEqual(_ a: Data, _ b: Data) -> Bool {
+        guard a.count == b.count else { return false }
+        var diff: UInt8 = 0
+        for (x, y) in zip(a, b) {
+            diff |= x ^ y
+        }
+        return diff == 0
+    }
 
     /// Generate a random 32-byte salt.
     private func generateSalt() -> Data {

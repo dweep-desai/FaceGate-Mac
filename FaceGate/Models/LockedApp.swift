@@ -18,19 +18,24 @@ struct LockedApp: Codable, Identifiable, Hashable {
     /// Custom session timeout in seconds for this individual app.
     var customSessionTimeout: TimeInterval?
 
+    /// If true, the session timer counts from when the app last lost focus (not from unlock).
+    /// If nil, uses the global setting.
+    var timerFromFocus: Bool?
+
     var id: String { bundleIdentifier }
 
     /// Creates a LockedApp from an NSRunningApplication or file path.
-    init(bundleIdentifier: String, displayName: String, iconData: Data? = nil, isLocked: Bool = true, customSessionTimeout: TimeInterval? = nil) {
+    init(bundleIdentifier: String, displayName: String, iconData: Data? = nil, isLocked: Bool = true, customSessionTimeout: TimeInterval? = nil, timerFromFocus: Bool? = nil) {
         self.bundleIdentifier = bundleIdentifier
         self.displayName = displayName
         self.iconData = iconData
         self.isLocked = isLocked
         self.customSessionTimeout = customSessionTimeout
+        self.timerFromFocus = timerFromFocus
     }
 
     private enum CodingKeys: String, CodingKey {
-        case bundleIdentifier, displayName, iconData, isLocked, customSessionTimeout
+        case bundleIdentifier, displayName, iconData, isLocked, customSessionTimeout, timerFromFocus
     }
 
     init(from decoder: Decoder) throws {
@@ -40,6 +45,7 @@ struct LockedApp: Codable, Identifiable, Hashable {
         iconData = try container.decodeIfPresent(Data.self, forKey: .iconData)
         isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? true
         customSessionTimeout = try container.decodeIfPresent(TimeInterval.self, forKey: .customSessionTimeout)
+        timerFromFocus = try container.decodeIfPresent(Bool.self, forKey: .timerFromFocus)
     }
 
     private static let iconCache = NSCache<NSString, NSImage>()

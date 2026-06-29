@@ -34,13 +34,11 @@ final class FaceAuthManager: ObservableObject {
     enum LivenessChallenge: CaseIterable {
         case turnLeft
         case turnRight
-        case tiltHead
 
         var prompt: String {
             switch self {
             case .turnLeft: return "Liveness Check: Turn head left"
             case .turnRight: return "Liveness Check: Turn head right"
-            case .tiltHead: return "Liveness Check: Tilt your head"
             }
         }
     }
@@ -118,7 +116,7 @@ final class FaceAuthManager: ObservableObject {
             return
         }
 
-        enrolledEmbeddings = enrollment.embeddings
+        enrolledEmbeddings = enrollment.faces.flatMap { $0.embeddings }
         onResult = completion
         frameCount = 0
         authStartTime = Date()
@@ -149,8 +147,8 @@ final class FaceAuthManager: ObservableObject {
     func stopAuthentication() {
         timeoutWorkItem?.cancel()
         timeoutWorkItem = nil
-        cameraManager.stopCapture()
         cameraManager.onFrameCaptured = nil
+        cameraManager.stopCapture()
         state = .idle
         statusMessage = ""
         warningMessage = ""
@@ -229,16 +227,12 @@ final class FaceAuthManager: ObservableObject {
             guard let challenge = self.activeChallenge else { return }
 
             let yaw = face.yaw.map { Float(truncating: $0) } ?? 0.0
-            let roll = face.roll.map { Float(truncating: $0) } ?? 0.0
-
             var isChallengeSatisfied = false
             switch challenge {
             case .turnLeft:
                 isChallengeSatisfied = yaw < -0.12
             case .turnRight:
                 isChallengeSatisfied = yaw > 0.12
-            case .tiltHead:
-                isChallengeSatisfied = abs(roll) > 0.12
             }
 
             if isChallengeSatisfied {
@@ -247,8 +241,8 @@ final class FaceAuthManager: ObservableObject {
                     self.timeoutWorkItem = nil
                     self.state = .matched
                     self.statusMessage = "Liveness verified!"
-                    self.cameraManager.stopCapture()
                     self.cameraManager.onFrameCaptured = nil
+                    self.cameraManager.stopCapture()
                     self.onResult?(true)
                     self.onResult = nil
                 }
