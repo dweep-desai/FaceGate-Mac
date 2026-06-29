@@ -3,7 +3,7 @@ import SwiftUI
 import Sparkle
 
 /// AppDelegate for AppKit bridging — handles lifecycle events that SwiftUI can't.
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     static private(set) var shared: AppDelegate?
 
     override init() {
@@ -184,6 +184,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.level = .floating
             installSettingsSidebarToggle(on: window, chromeState: chromeState)
             window.center()
+            window.delegate = self
             window.isReleasedWhenClosed = false
             
             window.orderFrontRegardless()
@@ -258,6 +259,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.level = .floating
         window.contentView = NSHostingView(rootView: setupView)
         window.center()
+        window.delegate = self
         window.isReleasedWhenClosed = false
         
         window.orderFrontRegardless()
@@ -319,5 +321,20 @@ private final class SettingsSidebarToggleTarget: NSObject {
 
     @objc func toggleSidebar() {
         chromeState.isSidebarCollapsed.toggle()
+    }
+}
+
+// MARK: - NSWindowDelegate
+
+extension AppDelegate: NSWindowDelegate {
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        if window == settingsWindow {
+            settingsWindow = nil
+            settingsChromeState = nil
+            settingsSidebarToggleTarget = nil
+        } else if window == setupWindow {
+            setupWindow = nil
+        }
     }
 }

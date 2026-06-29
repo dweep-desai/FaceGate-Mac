@@ -54,6 +54,9 @@ enum FGConstants {
     /// Key: timestamp when temporary disable expires.
     static let protectionDisableExpiryKey = "protectionDisableExpiry"
 
+    /// Key: whether to use full-screen overlay or app-window overlay.
+    static let authOverlayModeKey = "authOverlayMode"
+
     /// Key: whether to disable face unlock during certain hours.
     static let disableFaceUnlockHoursKey = "disableFaceUnlockHours"
 

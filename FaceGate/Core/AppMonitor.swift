@@ -106,6 +106,46 @@ final class AppMonitor: ObservableObject {
             return
         }
 
+        // If we are currently blocking an app...
+        if let blockedApp = AppLocker.shared.currentlyBlockedApp {
+            if bundleId == blockedApp {
+                // If the user activated the blocked app, bring overlays back to front.
+                AppLocker.shared.bringOverlaysToFront()
+                return
+            } else if bundleId != Bundle.main.bundleIdentifier {
+                // The user activated a different app.
+                // Let's check if the new app needs to be blocked.
+                let isNewAppLocked = lockedAppsManager.isLocked(bundleId)
+                let hasSession = sessionManager.hasActiveSession(for: bundleId)
+                
+                // Cooldown check for the new app.
+                var inCooldown = false
+                if let lastUnlock = recentlyUnlocked[bundleId],
+                   Date().timeIntervalSince(lastUnlock) < 1 {
+                    inCooldown = true
+                }
+
+                if isNewAppLocked && !hasSession && !inCooldown {
+                    // The new app needs to be blocked!
+                    // In App Window mode, we must first clear/dismiss the old app's overlays
+                    // before blocking the new one, since AppLocker only manages one block at a time.
+                    let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
+                    if overlayMode == 1 {
+                        AppLocker.shared.dismissOverlays()
+                    }
+                    // Do NOT return here. Let the code flow down to block the new app.
+                } else {
+                    // The new app is either not locked or has an active session.
+                    let overlayMode = UserDefaults.standard.integer(forKey: FGConstants.authOverlayModeKey)
+                    if overlayMode == 0 {
+                        // Only hide and dismiss on switch-away in Full Screen mode
+                        AppLocker.shared.handleSwitchAway()
+                    }
+                    return
+                }
+            }
+        }
+
         // Check if this app is in the locked list.
         guard lockedAppsManager.isLocked(bundleId) else { return }
 

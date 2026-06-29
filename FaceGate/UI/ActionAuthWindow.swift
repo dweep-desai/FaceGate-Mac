@@ -28,12 +28,14 @@ final class ActionAuthWindow: NSPanel {
                 let cachedWindow = activeWindow
                 activeWindow = nil
                 cachedWindow?.close()
+                AuthenticationManager.shared.stopFaceAuth()
                 onAuthenticated()
             },
             onCancel: {
                 let cachedWindow = activeWindow
                 activeWindow = nil
                 cachedWindow?.close()
+                AuthenticationManager.shared.stopFaceAuth()
                 onCancelled?()
             }
         )
@@ -43,6 +45,10 @@ final class ActionAuthWindow: NSPanel {
         panel.orderFrontRegardless()
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+
+        if AuthenticationManager.shared.isFaceUnlockAvailable {
+            AuthenticationManager.shared.authenticateWithFace { _ in }
+        }
     }
 
     init(
@@ -85,4 +91,8 @@ final class ActionAuthWindow: NSPanel {
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    deinit {
+        AuthenticationManager.shared.stopFaceAuth()
+    }
 }
