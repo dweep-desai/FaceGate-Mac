@@ -102,6 +102,10 @@ brew install --cask dweep-desai/tap/facegate
 
 <br>
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/chart?repos=dweep-desai/FaceGate-Mac&type=date&legend=top-left)](https://www.star-history.com/?repos=dweep-desai%2FFaceGate-Mac&type=date&legend=top-left)
+
 ## Security & Privacy
 
 FaceGate is designed as a **convenience layer against casual physical access**, not a defense against targeted attacks using high-fidelity spoofing. The built-in 2D FaceTime camera lacks depth sensing.
