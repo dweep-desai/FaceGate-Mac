@@ -119,6 +119,7 @@ final class AppLocker: ObservableObject {
             )
             if screen == activeScreen {
                 panel.makeKeyAndOrderFront(nil)
+                panel.makeMain()
             } else {
                 panel.orderFront(nil)
             }

@@ -102,6 +102,9 @@ final class AuthenticationManager: ObservableObject {
 
         touchIDAuth.authenticate(reason: "Unlock \(appName)") { [weak self] result in
             guard let self = self else { return }
+            // Ignore stale callbacks from cancelled/invalidated LAContext that arrive
+            // after another auth method (e.g. password) already changed the state.
+            guard case .authenticating(.touchID) = self.authState else { return }
             switch result {
             case .success:
                 self.onAuthSuccess()
@@ -109,7 +112,6 @@ final class AuthenticationManager: ObservableObject {
             case .failure(let error):
                 switch error {
                 case .cancelled, .fallbackRequested:
-                    // User cancelled — don't count as a failed attempt.
                     self.authState = .idle
                 default:
                     self.onAuthFailure(error.localizedDescription)
@@ -119,12 +121,22 @@ final class AuthenticationManager: ObservableObject {
         }
     }
 
+    /// Stop any in-progress Touch ID authentication.
+    func stopTouchIDAuth() {
+        touchIDAuth.cancelAuthentication()
+        if case .authenticating(let method) = authState, method == .touchID {
+            authState = .idle
+        }
+    }
+
     /// Authenticate using the app password.
     /// - Parameter password: The password the user entered.
     /// - Returns: `true` if authentication succeeded.
     func authenticateWithPassword(_ password: String) -> Bool {
         guard !isLockedOut else { return false }
 
+        stopTouchIDAuth() // Ensure Touch ID is cancelled if active
+        
         authState = .authenticating(.appPassword)
 
         if passwordAuth.verifyPassword(password) {

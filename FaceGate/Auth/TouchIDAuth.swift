@@ -26,21 +26,33 @@ final class TouchIDAuth {
         set { UserDefaults.standard.set(newValue, forKey: FGConstants.touchIDEnabledKey) }
     }
 
+    private var activeContext: LAContext?
+
     /// Whether Touch ID can be used (available AND enabled).
     var canUse: Bool {
         isAvailable && isEnabled
+    }
+
+    /// Cancel any ongoing Touch ID authentication prompt.
+    func cancelAuthentication() {
+        activeContext?.invalidate()
+        activeContext = nil
     }
 
     /// Authenticate using Touch ID.
     /// - Parameter reason: The reason displayed to the user (e.g., "Unlock Messages").
     /// - Parameter completion: Callback with success/failure result.
     func authenticate(reason: String, completion: @escaping (Result<Void, TouchIDError>) -> Void) {
+        cancelAuthentication() // Cancel any existing context first
+        
         let context = LAContext()
+        activeContext = context
         context.localizedCancelTitle = "Cancel"
         context.localizedFallbackTitle = ""  // Hide "Enter Password" fallback (we have our own).
 
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            activeContext = nil
             completion(.failure(.notAvailable(error?.localizedDescription ?? "Touch ID is not available")))
             return
         }
@@ -54,7 +66,7 @@ final class TouchIDAuth {
                     completion(.success(()))
                 } else if let laError = error as? LAError {
                     switch laError.code {
-                    case .userCancel:
+                    case .userCancel, .appCancel, .systemCancel:
                         completion(.failure(.cancelled))
                     case .userFallback:
                         completion(.failure(.fallbackRequested))

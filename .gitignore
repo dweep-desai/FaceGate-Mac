@@ -63,3 +63,5 @@ releases/sparkle_private_raw.key
 *.moved-aside
 .Trashes
 FaceGate-1.0.0.dmg
+.agents/
+skills-lock.json
