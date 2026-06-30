@@ -89,7 +89,7 @@ final class InstalledAppsScanner {
         }
     }
 
-    func createDiscoveredApp(from appURL: URL) -> DiscoveredApp? {
+    private func createDiscoveredApp(from appURL: URL) -> DiscoveredApp? {
         guard let bundle = Bundle(url: appURL),
               let bundleIdentifier = bundle.bundleIdentifier else {
             return nil

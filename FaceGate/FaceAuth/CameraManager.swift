@@ -71,13 +71,11 @@ final class CameraManager: NSObject, ObservableObject {
     // MARK: - Permission
 
     func checkPermission() {
-        shouldBeRunning = true // Use shouldBeRunning as our isCaptureRequested flag since it already exists
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         switch status {
         case .authorized:
             permissionGranted = true
             error = nil
-            startCapture()
         case .notDetermined:
             error = nil
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
@@ -85,9 +83,7 @@ final class CameraManager: NSObject, ObservableObject {
                     self?.permissionGranted = granted
                     if granted {
                         self?.error = nil
-                        if self?.shouldBeRunning == true {
-                            self?.startCapture()
-                        }
+                        self?.startCapture()
                     } else {
                         self?.error = .permissionDenied
                     }

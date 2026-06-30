@@ -48,30 +48,15 @@ struct LockedApp: Codable, Identifiable, Hashable {
         timerFromFocus = try container.decodeIfPresent(Bool.self, forKey: .timerFromFocus)
     }
 
-    private static let iconCache: NSCache<NSString, NSImage> = {
-        let cache = NSCache<NSString, NSImage>()
-        cache.countLimit = 5
-        return cache
-    }()
+    private static let iconCache = NSCache<NSString, NSImage>()
 
-    /// Convenience: get the NSImage icon, trying dynamic fetch first for full resolution, then falling back to stored data.
+    /// Convenience: get the NSImage icon from stored data.
     var icon: NSImage? {
+        guard let iconData = iconData else { return nil }
         let key = bundleIdentifier as NSString
-        
-        // 1. Check cache first
         if let cached = Self.iconCache.object(forKey: key) {
             return cached
         }
-        
-        // 2. Try fetching dynamically for perfect Retina resolution
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
-            let dynamicIcon = NSWorkspace.shared.icon(forFile: url.path)
-            Self.iconCache.setObject(dynamicIcon, forKey: key)
-            return dynamicIcon
-        }
-        
-        // 3. Fallback to stored low-res data if app is no longer at path
-        guard let iconData = iconData else { return nil }
         guard let image = NSImage(data: iconData) else { return nil }
         Self.iconCache.setObject(image, forKey: key)
         return image
