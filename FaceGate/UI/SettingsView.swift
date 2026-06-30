@@ -1,6 +1,7 @@
 import AppKit
 import ServiceManagement
 import SwiftUI
+import AVFoundation
 
 final class SettingsChromeState: ObservableObject {
     @Published var isSidebarCollapsed = false
@@ -288,6 +289,12 @@ private struct AuthSettingsView: View {
                                 .labelsHidden()
                                 .onChangeCompat(of: faceUnlockEnabled) { newValue in
                                     UserDefaults.standard.set(newValue, forKey: FGConstants.faceUnlockEnabledKey)
+                                    if newValue {
+                                        let status = AVCaptureDevice.authorizationStatus(for: .video)
+                                        if status == .notDetermined {
+                                            AVCaptureDevice.requestAccess(for: .video) { _ in }
+                                        }
+                                    }
                                 }
                         }
                     }

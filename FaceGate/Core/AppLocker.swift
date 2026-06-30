@@ -12,6 +12,9 @@ final class AppLocker: ObservableObject {
     /// The running application instance being blocked.
     private(set) var blockedRunningApp: NSRunningApplication?
 
+    /// Optional action to execute after unlocking (e.g. opening Settings)
+    var onUnlockAction: (() -> Void)?
+
     /// Active overlay panels (one per screen for multi-display).
     private var overlayPanels: [AuthOverlayPanel] = []
 
@@ -51,6 +54,9 @@ final class AppLocker: ObservableObject {
         currentlyBlockedApp = nil
         blockedRunningApp = nil
 
+        let action = onUnlockAction
+        onUnlockAction = nil
+
         // Create an unlock session (no-op for "lock immediately" — duration is 0).
         sessionManager.createSession(for: bundleId)
         appMonitor.recordUnlock(for: bundleId)
@@ -63,6 +69,8 @@ final class AppLocker: ObservableObject {
             app.unhide()
             app.activate(options: [.activateIgnoringOtherApps])
         }
+
+        action?()
     }
 
     /// Called when authentication fails and user chooses to cancel.
@@ -83,6 +91,7 @@ final class AppLocker: ObservableObject {
 
         currentlyBlockedApp = nil
         blockedRunningApp = nil
+        onUnlockAction = nil
     }
 
     /// Dismiss all overlays without unlocking (e.g., if FaceGate is quitting).
@@ -91,6 +100,13 @@ final class AppLocker: ObservableObject {
             panel.orderOut(nil)
         }
         overlayPanels.removeAll()
+    }
+
+    /// Temporarily adjust the window level of the overlay (e.g. to show system prompts).
+    func setOverlayWindowLevel(_ level: NSWindow.Level) {
+        for panel in overlayPanels {
+            panel.level = level
+        }
     }
 
     // MARK: - Private

@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import CoreVideo
+import AVFoundation
 
 /// The main face authentication orchestrator.
 /// Ties together camera capture → face detection → embedding → matching
@@ -118,6 +119,35 @@ final class FaceAuthManager: ObservableObject {
 
         enrolledEmbeddings = enrollment.faces.flatMap { $0.embeddings }
         onResult = completion
+
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        if status == .notDetermined {
+            // Lower window level so the macOS camera permission prompt is visible
+            // above the full-screen AppLocker overlay (which is normally at .screenSaver level).
+            AppLocker.shared.setOverlayWindowLevel(.normal)
+            
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    AppLocker.shared.setOverlayWindowLevel(.screenSaver)
+                    if granted {
+                        self?.proceedWithAuthentication()
+                    } else {
+                        self?.state = .error("Camera permission denied")
+                        self?.onResult?(false)
+                        self?.onResult = nil
+                    }
+                }
+            }
+        } else if status == .authorized {
+            proceedWithAuthentication()
+        } else {
+            state = .error("Camera permission denied")
+            onResult?(false)
+            onResult = nil
+        }
+    }
+
+    private func proceedWithAuthentication() {
         frameCount = 0
         authStartTime = Date()
         state = .scanning
