@@ -109,8 +109,10 @@ final class AuthenticationManager: ObservableObject {
             case .failure(let error):
                 switch error {
                 case .cancelled, .fallbackRequested:
-                    // User cancelled — don't count as a failed attempt.
-                    self.authState = .idle
+                    // Only reset if Touch ID is still the active auth method
+                    if case .authenticating(.touchID) = self.authState {
+                        self.authState = .idle
+                    }
                 default:
                     self.onAuthFailure(error.localizedDescription)
                 }
