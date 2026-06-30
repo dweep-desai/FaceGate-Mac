@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://facegate-applocker.vercel.app/" target="_blank" rel="noopener noreferrer">
+  <a href="https://dweep-desai.github.io/FaceGate-web/" target="_blank" rel="noopener noreferrer">
     <img src="non-app-assets/website.svg" alt="Website" height="16" />
   </a>
 </p>
