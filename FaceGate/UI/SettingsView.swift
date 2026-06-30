@@ -248,6 +248,7 @@ private extension Color {
 
 private struct AuthSettingsView: View {
     @State private var faceUnlockEnabled = UserDefaults.standard.bool(forKey: FGConstants.faceUnlockEnabledKey)
+    @State private var livenessCheckDuringAuthDisabled = UserDefaults.standard.bool(forKey: FGConstants.livenessCheckDuringAuthDisabledKey)
     @State private var faceEnrolled = UserDefaults.standard.bool(forKey: FGConstants.faceEnrolledKey)
     @State private var touchIDEnabled = TouchIDAuth.shared.isEnabled
     @State private var isTouchIDAvailable = TouchIDAuth.shared.isAvailable
@@ -373,6 +374,21 @@ private struct AuthSettingsView: View {
                             .controlSize(.small)
                             .foregroundColor(.red)
                         }
+                    }
+
+                    // Liveness check toggle (only shown if enrolled).
+                    if faceEnrolled {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Toggle("Disable Liveness Check During Auth", isOn: $livenessCheckDuringAuthDisabled)
+                                .onChangeCompat(of: livenessCheckDuringAuthDisabled) { newValue in
+                                    UserDefaults.standard.set(newValue, forKey: FGConstants.livenessCheckDuringAuthDisabledKey)
+                                }
+                            Text("Not recommended. Disabling liveness check speeds up unlock but allows photo spoofing.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.top, 4)
+                        .padding(.bottom, 8)
                     }
 
                     // Sensitivity slider (only shown if enrolled).
@@ -595,6 +611,7 @@ private struct AuthSettingsView: View {
     private func refreshEnrolledFaces() {
         faceEnrolled = UserDefaults.standard.bool(forKey: FGConstants.faceEnrolledKey)
         faceUnlockEnabled = UserDefaults.standard.bool(forKey: FGConstants.faceUnlockEnabledKey)
+        livenessCheckDuringAuthDisabled = UserDefaults.standard.bool(forKey: FGConstants.livenessCheckDuringAuthDisabledKey)
         if let enrollment = FaceDataStore.shared.load() {
             enrolledFaces = enrollment.faces
             for face in enrollment.faces {

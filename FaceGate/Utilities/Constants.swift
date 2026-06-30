@@ -36,6 +36,9 @@ enum FGConstants {
     /// Key: face unlock sensitivity threshold (Float, 0.0–1.0).
     static let faceUnlockThresholdKey = "faceUnlockThreshold"
 
+    /// Key: whether liveness check is disabled during authentication.
+    static let livenessCheckDuringAuthDisabledKey = "livenessCheckDuringAuthDisabled"
+
     /// Key: session timeout in seconds.
     static let sessionTimeoutKey = "sessionTimeout"
 
