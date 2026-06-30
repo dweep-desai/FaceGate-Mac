@@ -102,6 +102,9 @@ final class AuthenticationManager: ObservableObject {
 
         touchIDAuth.authenticate(reason: "Unlock \(appName)") { [weak self] result in
             guard let self = self else { return }
+            // Ignore stale callbacks from cancelled/invalidated LAContext that arrive
+            // after another auth method (e.g. password) already changed the state.
+            guard case .authenticating(.touchID) = self.authState else { return }
             switch result {
             case .success:
                 self.onAuthSuccess()
@@ -109,10 +112,7 @@ final class AuthenticationManager: ObservableObject {
             case .failure(let error):
                 switch error {
                 case .cancelled, .fallbackRequested:
-                    // Only reset if Touch ID is still the active auth method
-                    if case .authenticating(.touchID) = self.authState {
-                        self.authState = .idle
-                    }
+                    self.authState = .idle
                 default:
                     self.onAuthFailure(error.localizedDescription)
                 }
