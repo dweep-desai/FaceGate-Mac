@@ -48,7 +48,11 @@ struct LockedApp: Codable, Identifiable, Hashable {
         timerFromFocus = try container.decodeIfPresent(Bool.self, forKey: .timerFromFocus)
     }
 
-    private static let iconCache = NSCache<NSString, NSImage>()
+    private static let iconCache: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 5
+        return cache
+    }()
 
     /// Convenience: get the NSImage icon, trying dynamic fetch first for full resolution, then falling back to stored data.
     var icon: NSImage? {

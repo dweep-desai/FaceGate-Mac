@@ -99,12 +99,19 @@ final class InstalledAppsScanner {
             ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
             ?? appURL.deletingPathExtension().lastPathComponent
 
+        // Downscale to a single 64x64 thumbnail to avoid holding all .icns sizes (~5-8 MB per app).
         let fullIcon = NSWorkspace.shared.icon(forFile: appURL.path)
+        let thumbnail = NSImage(size: NSSize(width: 64, height: 64))
+        thumbnail.lockFocus()
+        fullIcon.draw(in: NSRect(x: 0, y: 0, width: 64, height: 64),
+                      from: NSRect(x: 0, y: 0, width: fullIcon.size.width, height: fullIcon.size.height),
+                      operation: .copy, fraction: 1.0)
+        thumbnail.unlockFocus()
 
         return DiscoveredApp(
             bundleIdentifier: bundleIdentifier,
             displayName: displayName,
-            icon: fullIcon,
+            icon: thumbnail,
             path: appURL
         )
     }

@@ -109,52 +109,38 @@ final class FaceAuthManager: ObservableObject {
             return
         }
 
-        // Load enrolled embeddings on a background thread because it queries the Keychain,
-        // which might present a blocking system modal. Doing this on the main thread inside 
-        // a SwiftUI transaction (like withAnimation) causes an abort crash.
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
-            
-            let enrollment = self.dataStore.load()
-            
-            DispatchQueue.main.async {
-                guard let enrollment = enrollment, enrollment.isValid else {
-                    self.state = .error("No valid face enrollment found")
-                    completion(false)
-                    return
-                }
-
-                self.enrolledEmbeddings = enrollment.faces.flatMap { $0.embeddings }
-                self.onResult = completion
-                self.frameCount = 0
-                self.authStartTime = Date()
-                self.state = .scanning
-                self.statusMessage = "Looking for your face"
-                self.warningMessage = ""
-                self.activeChallenge = nil
-
-                self.cameraManager.onFrameCaptured = { [weak self] pixelBuffer in
-                    self?.processAuthFrame(pixelBuffer)
-                }
-
-                // Defer the permission check slightly to ensure the SwiftUI layout cycle (adding CameraPreviewView)
-                // completes before the system potentially presents the blocking TCC dialog for camera access.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.cameraManager.checkPermission()
-                }
-
-                // Cancel any existing timeout before scheduling a new one.
-                self.timeoutWorkItem?.cancel()
-
-                let workItem = DispatchWorkItem { [weak self] in
-                    guard let self = self, self.state == .scanning else { return }
-                    self.state = .timeout
-                    self.statusMessage = "Face not recognized"
-                }
-                self.timeoutWorkItem = workItem
-                DispatchQueue.main.asyncAfter(deadline: .now() + self.authTimeout, execute: workItem)
-            }
+        // Load enrolled embeddings.
+        guard let enrollment = dataStore.load(), enrollment.isValid else {
+            state = .error("No valid face enrollment found")
+            completion(false)
+            return
         }
+
+        enrolledEmbeddings = enrollment.faces.flatMap { $0.embeddings }
+        onResult = completion
+        frameCount = 0
+        authStartTime = Date()
+        state = .scanning
+        statusMessage = "Looking for your face…"
+        warningMessage = ""
+        activeChallenge = nil
+
+        cameraManager.onFrameCaptured = { [weak self] pixelBuffer in
+            self?.processAuthFrame(pixelBuffer)
+        }
+
+        cameraManager.startCapture()
+
+        // Cancel any existing timeout before scheduling a new one.
+        timeoutWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self, self.state == .scanning else { return }
+            self.state = .timeout
+            self.statusMessage = "Face not recognized"
+        }
+        timeoutWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + authTimeout, execute: workItem)
     }
 
     /// Stop face authentication and release the camera.

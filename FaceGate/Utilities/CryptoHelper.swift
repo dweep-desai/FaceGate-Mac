@@ -10,24 +10,17 @@ final class CryptoHelper {
 
     // MARK: - Key Management
 
-    private var cachedKey: SymmetricKey?
-
     /// Retrieve the encryption key from Keychain, or generate and store a new one.
     /// - Returns: A 256-bit symmetric key for AES-GCM.
     func getOrCreateKey() throws -> SymmetricKey {
-        if let key = cachedKey { return key }
-
         if let existingKeyData = KeychainHelper.shared.read(for: FGConstants.keychainFaceDataKeyAccount) {
-            let key = SymmetricKey(data: existingKeyData)
-            cachedKey = key
-            return key
+            return SymmetricKey(data: existingKeyData)
         }
 
         // Generate a new random 256-bit key.
         let newKey = SymmetricKey(size: .bits256)
         let keyData = newKey.withUnsafeBytes { Data($0) }
         try KeychainHelper.shared.save(keyData, for: FGConstants.keychainFaceDataKeyAccount)
-        cachedKey = newKey
         return newKey
     }
 
