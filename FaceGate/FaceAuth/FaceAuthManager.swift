@@ -216,6 +216,21 @@ final class FaceAuthManager: ObservableObject {
 
             // Select a challenge if none has been chosen yet.
             if self.activeChallenge == nil {
+                if UserDefaults.standard.bool(forKey: FGConstants.livenessCheckDuringAuthDisabledKey) {
+                    DispatchQueue.main.async {
+                        self.timeoutWorkItem?.cancel()
+                        self.timeoutWorkItem = nil
+                        self.state = .matched
+                        self.statusMessage = "Face recognized!"
+                        self.cameraManager.onFrameCaptured = nil
+                        self.cameraManager.stopCapture()
+                        self.onResult?(true)
+                        self.onResult = nil
+                    }
+                    return
+                    
+                }
+
                 let challenge = LivenessChallenge.allCases.randomElement() ?? .turnLeft
                 DispatchQueue.main.async {
                     self.activeChallenge = challenge
