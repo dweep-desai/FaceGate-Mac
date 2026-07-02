@@ -69,6 +69,11 @@ final class AppMonitor: ObservableObject {
         }
 
         isMonitoring = true
+
+        // Check currently active app immediately.
+        if let currentApp = NSWorkspace.shared.frontmostApplication {
+            checkApp(currentApp)
+        }
     }
 
     /// Stop monitoring app launches and activations.
@@ -98,13 +103,18 @@ final class AppMonitor: ObservableObject {
     // MARK: - Private
 
     private func handleAppEvent(_ notification: Notification) {
+
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
+            return
+        }
+        checkApp(app)
+    }
+
+    private func checkApp(_ app: NSRunningApplication) {
         // Check if protection is temporarily disabled.
         if isProtectionDisabled() { return }
 
-        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-              let bundleId = app.bundleIdentifier else {
-            return
-        }
+        guard let bundleId = app.bundleIdentifier else { return }
 
         // Check if this app is in the locked list.
         guard lockedAppsManager.isLocked(bundleId) else { return }

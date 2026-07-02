@@ -156,15 +156,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSettingsWindow() {
         closeMenuBarWindow()
 
-        ActionAuthWindow.show(reason: "FaceGate Settings") { [weak self] in
-            guard let self = self else { return }
-
-            if let existing = self.settingsWindow {
-                existing.orderFrontRegardless()
-                existing.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
-                return
+        if AppLocker.shared.currentlyBlockedApp != nil {
+            AppLocker.shared.onUnlockAction = { [weak self] in
+                self?.openSettingsWindowBypassingAuth()
             }
+            // Ensure the overlay is key
+            if let panel = NSApp.windows.first(where: { $0 is AuthOverlayPanel && $0.isVisible }) {
+                panel.makeKeyAndOrderFront(nil)
+            }
+            return
+        }
+
+        ActionAuthWindow.show(reason: "FaceGate Settings") { [weak self] in
+            self?.openSettingsWindowBypassingAuth()
+        }
+    }
+
+    private func openSettingsWindowBypassingAuth() {
+        if let existing = self.settingsWindow {
+            existing.orderFrontRegardless()
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
 
             let chromeState = SettingsChromeState()
             let settingsView = SettingsView(chromeState: chromeState)
@@ -192,7 +206,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             self.settingsChromeState = chromeState
             self.settingsWindow = window
-        }
     }
 
     private func installSettingsSidebarToggle(on window: NSWindow, chromeState: SettingsChromeState) {
