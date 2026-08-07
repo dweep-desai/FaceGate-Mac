@@ -16,7 +16,7 @@ struct AnimatedDirectionIndicator: View {
         if !icon.isEmpty {
             Image(systemName: icon)
                 .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.blue)
+                .foregroundColor(direction == .left ? .blue : .green)
                 .padding(12)
                 .background(Circle().fill(Color.black.opacity(0.65)))
                 .offset(x: direction == .left ? -offset : offset)
