@@ -104,7 +104,7 @@ brew install --cask dweep-desai/tap/facegate
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/chart?repos=dweep-desai/FaceGate-Mac&type=date&legend=top-left)](https://www.star-history.com/?repos=dweep-desai%2FFaceGate-Mac&type=date&legend=top-left)
+[![Star History Chart](https://star-history.dera.page/svg?repos=dweep-desai/FaceGate-Mac&type=date&legend=top-left)](https://star-history.dera.page/#dweep-desai/FaceGate-Mac&type=date&legend=top-left)
 
 ## Security & Privacy
 
@@ -149,7 +149,6 @@ MIT License. See [LICENSE](LICENSE).
 ---
 
 <p align="center"><em>Authored by Dweep Desai</em></p>
-
 
 
 
