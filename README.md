@@ -113,8 +113,7 @@ FaceGate is designed as a **convenience layer against casual physical access**, 
 - Face embeddings are AES-256-GCM encrypted and stored locally.
 - Encryption keys are held in the macOS Keychain.
 - The password uses SHA-256 with a random 32-byte salt, stored in the Keychain.
-- **No telemetry.** No usage or diagnostic data is collected or transmitted.
-- **Network access is limited to automatic updates.** Sparkle checks a GitHub-hosted update feed every 24 hours.
+- **Zero telemetry.** The app is fully offline and makes no network requests (except daily Sparkle automatic update check).
 - Face unlock sensitivity is configurable (default similarity threshold: 0.65).
 
 <br>
