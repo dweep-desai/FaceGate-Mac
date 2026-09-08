@@ -1932,7 +1932,9 @@ private struct LockedAppDetailView: View {
 
 // MARK: - Camera Picker
 
-private struct CameraPickerView: View {
+/// Not private: also embedded in the onboarding wizard's permissions step (SetupView)
+/// so users with more than one camera can pick before face enrollment starts.
+struct CameraPickerView: View {
     @ObservedObject private var cameraManager = AuthenticationManager.shared.faceAuthManager.cameraManager
     @State private var selectedID: String = ""
 

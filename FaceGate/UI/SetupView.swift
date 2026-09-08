@@ -139,6 +139,16 @@ struct SetupView: View {
                     isGranted: nil,
                     action: nil
                 )
+
+                // Lets users with more than one camera (e.g. an external webcam)
+                // choose which one to enroll with before face setup starts.
+                // Disabled automatically when only one camera is available.
+                CameraPickerView()
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(nsColor: .controlBackgroundColor))
+                    )
             }
             .padding(.horizontal, 40)
 
